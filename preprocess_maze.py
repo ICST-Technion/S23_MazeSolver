@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[14]:
 
 
 import cv2
@@ -10,22 +10,22 @@ from matplotlib import pyplot as plt
 get_ipython().run_line_magic('matplotlib', 'inline')
 
 
-# In[11]:
+# In[15]:
 
 
 MAZE_COLOR = 255
 BACKGROUND_COLOR = 0
 
 
-# In[2]:
+# In[72]:
 
 
 def show_image(img):
-    plt.imshow(img)
+    plt.imshow(img, cmap='gray')
     plt.show()
 
 
-# In[13]:
+# In[17]:
 
 
 # loads image from path
@@ -37,29 +37,35 @@ def load_raw_image(path):
     return np.array(raw_image)
 
 
-# In[4]:
+# In[34]:
 
 
 def threshold_image(img, min_val=127, max_val = 255):
-    ret,thresh = cv2.threshold(img,min_val, max_val,cv2.THRESH_BINARY)
+    ret,thresh = cv2.threshold(img,min_val, max_val,cv2.THRESH_BINARY_INV)
     return thresh
 
 
-# In[5]:
+# In[44]:
 
 
 def get_start_point(img):
-    return img.shape[0]-1, 0
+    positions = np.nonzero(img)
+    start_idx = np.argmin(positions[0])
+
+    return positions[0][start_idx], positions[1][start_idx]
 
 
-# In[6]:
+# In[71]:
 
 
 def get_end_point(img):
-    return 0, img.shape[1]-1
+    positions = np.nonzero(img)
+    start_idx = np.argmax(positions[0])
+
+    return positions[0][start_idx], positions[1][start_idx]
 
 
-# In[7]:
+# In[46]:
 
 
 def load_image(path):
@@ -68,7 +74,7 @@ def load_image(path):
     return im
 
 
-# In[12]:
+# In[47]:
 
 
 class MazeImage(object):

@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[32]:
 
 
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 get_ipython().run_line_magic('matplotlib', 'inline')
-import preprocess_maze
 
 
 # In[15]:
@@ -17,7 +16,7 @@ import preprocess_maze
 from preprocess_maze import MazeImage, show_image
 
 
-# In[27]:
+# In[34]:
 
 
 """
@@ -37,8 +36,27 @@ class MazeState(object):
     def get_value(self):
         return self.row, self.col
     
+    def get_id(self):
+        return str(self.row) + "," + str(self.col)
+    
     def __eq__(self, other):
         return self.row == other.row and self.col == other.col
+    
+    def __gt__(self, other):
+        if self.row > other.row :
+            return True
+        elif self.row == other.row and self.col > other.col:
+            return True
+        return False
+    
+    def __lt__(self, other):
+        if self.row < other.row :
+            return True
+        elif self.row == other.row and self.col < other.col:
+            return True
+        return False
+    
+        
 
 
 class MazeSearchEnv(object):
@@ -53,8 +71,15 @@ class MazeSearchEnv(object):
         end_row, end_col = self.__data_obj.get_end_point()
         self.__final_state = MazeState(end_row, end_col)
         
+        
+    def get_cost(self, state, action):
+        return 1
+        
     def is_final_state(self, state):
         return state == self.__final_state
+    
+    def get_final_state(self):
+        return self.__final_state
     
     def get_initial_state(self):
         start_row, start_col = self.__data_obj.get_start_point()
@@ -93,6 +118,17 @@ class MazeSearchEnv(object):
     
     def print_maze(self):
         show_image(self.__data_obj.get_data())
+        
+    def color_maze_path_and_print(self, actions, color = 255):
+        maze_copy = np.zeros(self.__data_obj.get_data().shape)
+        curr_row, curr_col = self.get_initial_state().get_value()
+        maze_copy[curr_row][curr_col] = color
+        for action in actions:
+            curr_row = curr_row + self.actions[action][0]
+            curr_col = curr_col + self.actions[action][1]
+            maze_copy[curr_row][curr_col] = color
+
+        show_image(maze_copy)
 
 
 # In[ ]:
