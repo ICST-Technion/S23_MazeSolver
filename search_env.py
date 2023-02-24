@@ -16,7 +16,7 @@ get_ipython().run_line_magic('matplotlib', 'inline')
 from preprocess_maze import MazeImage, show_image
 
 
-# In[34]:
+# In[1]:
 
 
 """
@@ -66,7 +66,8 @@ class MazeSearchEnv(object):
     # get_start_point
     # get_data
     def __init__(self, path_to_maze):
-        self.actions = {"UP": (-1, 0), "DOWN": (1, 0), "LEFT": (0, -1), "RIGHT": (0, 1)}
+        self.actions = {"UP": (-1, 0), "DOWN": (1, 0), "LEFT": (0, -1), "RIGHT": (0, 1),
+                        "DIAG_UL": (-1, -1), "DIAG_UR":(-1,1), "DIAG_DL":(1,-1), "DIAG_DR":(1,1)}
         self.__data_obj = MazeImage(path_to_maze)
         end_row, end_col = self.__data_obj.get_end_point()
         self.__final_state = MazeState(end_row, end_col)

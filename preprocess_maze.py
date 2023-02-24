@@ -1,23 +1,24 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[14]:
+# In[25]:
 
 
 import cv2
 import numpy as np
+from skimage.morphology import skeletonize
 from matplotlib import pyplot as plt
 get_ipython().run_line_magic('matplotlib', 'inline')
 
 
-# In[15]:
+# In[26]:
 
 
 MAZE_COLOR = 255
 BACKGROUND_COLOR = 0
 
 
-# In[72]:
+# In[27]:
 
 
 def show_image(img):
@@ -25,7 +26,7 @@ def show_image(img):
     plt.show()
 
 
-# In[17]:
+# In[28]:
 
 
 # loads image from path
@@ -37,7 +38,7 @@ def load_raw_image(path):
     return np.array(raw_image)
 
 
-# In[34]:
+# In[29]:
 
 
 def threshold_image(img, min_val=127, max_val = 255):
@@ -45,7 +46,7 @@ def threshold_image(img, min_val=127, max_val = 255):
     return thresh
 
 
-# In[44]:
+# In[30]:
 
 
 def get_start_point(img):
@@ -55,26 +56,37 @@ def get_start_point(img):
     return positions[0][start_idx], positions[1][start_idx]
 
 
-# In[71]:
+# In[31]:
 
 
 def get_end_point(img):
     positions = np.nonzero(img)
     start_idx = np.argmax(positions[0])
-
     return positions[0][start_idx], positions[1][start_idx]
 
 
-# In[46]:
+# In[32]:
 
 
 def load_image(path):
     im = load_raw_image("./practice_maze.png")
     im = threshold_image(im)
+    im = skeletonize_image(im)
     return im
 
 
-# In[47]:
+# In[52]:
+
+
+def skeletonize_image(image):
+    image = np.copy(image)
+    image[image != 0] = 1
+    image = skeletonize(image).astype(int)
+    image[image != 0] = MAZE_COLOR
+    return image
+
+
+# In[53]:
 
 
 class MazeImage(object):
