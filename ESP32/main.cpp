@@ -11,7 +11,7 @@ WiFiServer server(8080);
 
 void setup() {
   Serial.begin(9600);
-  
+  Serial.println("hey...");
   // Connect to Wi-Fi network
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
@@ -30,6 +30,18 @@ void setup() {
 
 void loop() {
 
+  // Check if we've lost connection to Wi-Fi network
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Lost connection to Wi-Fi network, reconnecting...");
+    WiFi.begin(ssid, password);
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(1000);
+      Serial.print(".");
+    }
+    Serial.println("");
+    Serial.println("Reconnected to Wi-Fi");
+  }
+  
   // Wait for a client to connect
   WiFiClient client = server.available();
   if (client) {
@@ -53,4 +65,7 @@ void loop() {
     client.stop();
     Serial.println("Client disconnected");
   }
+
+  
+
 }
