@@ -1,71 +1,84 @@
 
 
 #include <WiFi.h>
-#include <Arduino.h>
 
-
-const char* ssid = "sagiv";
+// Wifi info
+const char* ssid = "GIVE_ME_PI";
 const char* password = "";
+const uint16_t port = 8888;
+const char * host = "10.42.0.1"; // raspberry pi ip 
+int connectionTimeOut = 10000; // 10 ms
+WiFiClient client;
+bool connectedToServer = false;
 
-WiFiServer server(8080);
+#define BUFFER_SIZE = 100;
+#define WIFI_CONNECTION_ERROR -1
 
-void setup() {
-  Serial.begin(9600);
-  Serial.println("hey...");
-  // Connect to Wi-Fi network
+
+int connectToWiFi(const char* ssid, const char* password){
+  int loopCounter = 0;
+  int maxLoops = 10;
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
     Serial.println("Connecting to WiFi...");
+    delay(1000);
+    loopCounter++;
+    if (loopCounter > maxLoops){
+      return WIFI_CONNECTION_ERROR;
+    }
   }
 
   Serial.println("Connected to WiFi");
+  Serial.println(WiFi.localIP());
+  return 0;
+}
 
-  // Start the server
-  server.begin();
+void setup() {
 
-  Serial.println("Server started");
+
+  Serial.begin(9600);
+  Serial.println("hey...");
+  // Connect to Wi-Fi network
+  WiFi.mode(WIFI_STA);
+  if (connectToWiFi(ssid,password) == WIFI_CONNECTION_ERROR){
+      Serial.println("connection error occurred...");
+      exit(0);
+  };
 
 }
 
 void loop() {
-
-  // Check if we've lost connection to Wi-Fi network
-  if (WiFi.status() != WL_CONNECTED) {
+  // check WiFi connection
+  if (WiFi.status() != WL_CONNECTED){
     Serial.println("Lost connection to Wi-Fi network, reconnecting...");
-    WiFi.begin(ssid, password);
-    while (WiFi.status() != WL_CONNECTED) {
-      delay(1000);
-      Serial.print(".");
+    while (connectToWiFi(ssid,password) == WIFI_CONNECTION_ERROR) {};
+    // if reconneting to Wifi, we need to connect the server again.
+    connectedToServer = false;
+  }
+
+  if (connectedToServer == false){
+    // create a connection with the server.
+    if (!client.connect(host, port,connectionTimeOut)) {
+        return;
     }
-    Serial.println("");
-    Serial.println("Reconnected to Wi-Fi");
-  }
-  
-  // Wait for a client to connect
-  WiFiClient client = server.available();
-  if (client) {
-    Serial.println("Client connected");
-
-    // Read the data into a byte array
-    const int bufferSize = 256;  // Maximum buffer size
-    uint8_t buffer[bufferSize];
-    int bytesRead = client.readBytes(buffer, bufferSize);
-
-    // Do something with the byte array
-    // ...
-
-    // Send the response
-    client.println("HTTP/1.1 200 OK");
-    client.println("Content-Type: text/html");
-    client.println("");
-    client.println("<html><body><h1>Hello, World!</h1></body></html>");
-
-    // Close the connection
-    client.stop();
-    Serial.println("Client disconnected");
+    connectedToServer = true;
   }
 
-  
+  client.print("HI!!! THIS IS THE ESP32\r");
+
+  //wait for the server's reply to become available
+  while (!client.available()){}
+
+  uint8_t rxBuffer[100];
+  if (client.available() > 0){
+    Serial.println("server is available");
+    //read back one line from the server
+    int bytesReceived = client.read(rxBuffer,100);
+    for (int i = 0; i < bytesReceived; i++){
+      Serial.print(rxBuffer[i]);
+      Serial.print(" ");
+
+    }
+  }
 
 }
