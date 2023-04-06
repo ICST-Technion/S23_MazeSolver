@@ -3,36 +3,18 @@ import threading
 import time
 import logging
 
-class Config:
-
-    # server socket
-    host = "127.0.0.1"  # should be 192.168.5.1 for RPI
-    port = 8080
-
-    # bot
-    right = 1
-    left = 2
-    up = 3
-    down = 4
-    stay = 5
-    finished = 6
-    directions_map = {1: "RIGHT", 2: "LEFT", 3:"UP", 4:"down", 5:"STAY", 6:"FINISHED"}
-
-    # logging
-    logging_file = "./maze_solver.log"
-
 def get_directions():
     return [1, 2, 3, 4, 5]
 
 
 class DirectionsServer:
-    def __init__(self):
-        self.ip = Config.host
-        self.port = Config.port
+    def __init__(self, ip, port, update_arr_callback):
+        self.ip = ip
+        self.port = port
         self.directions = get_directions()
         self.lock = threading.Lock()
         self.request_counter = 0
-
+        self.update_callback = update_arr_callback
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
         logging.info("started new server instance")
 
@@ -42,10 +24,9 @@ class DirectionsServer:
     def update_directions(self):
         logging.debug("updating directions")
         self.lock.acquire()
-        self.directions = get_directions()
+        self.directions = self.update_callback()
         # get directions logic
-        time.sleep(4)
-
+        time.sleep(1)
         self.lock.release()
 
     def start_server(self):
@@ -65,7 +46,7 @@ class DirectionsServer:
 
                         # receive data from bot
                         data = conn.recv(1024)
-                        if not data:
+                        if not data or data.decode() != 'ESP':
                             break
 
                         self.request_counter += 1
