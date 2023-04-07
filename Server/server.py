@@ -1,0 +1,72 @@
+import socket
+import threading
+import time
+import logging
+
+def get_directions():
+    return [1, 2, 3, 4, 5]
+
+
+class DirectionsServer:
+    def __init__(self, ip, port, update_arr_callback):
+        self.ip = ip
+        self.port = port
+        self.directions = get_directions()
+        self.lock = threading.Lock()
+        self.request_counter = 0
+        self.update_callback = update_arr_callback
+        logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
+        logging.info("started new server instance")
+
+    def get_next_direction(self):
+        return self.directions.pop()
+
+    def update_directions(self):
+        logging.debug("updating directions")
+        self.lock.acquire()
+        self.directions = self.update_callback()
+        # get directions logic
+        time.sleep(1)
+        self.lock.release()
+
+    def start_server(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            # start up server
+            try:
+                s.bind((self.ip, self.port))
+                s.listen()
+            except Exception as e:
+                logging.error(f"Server startup error: {repr(e)}")
+
+            while True:
+                conn, addr = s.accept()
+                with conn:
+                    logging.debug(f"Connected by {addr}")
+                    while True:
+
+                        # receive data from bot
+                        data = conn.recv(1024)
+                        if not data or data.decode() != 'ESP':
+                            break
+
+                        self.request_counter += 1
+                        # every 5 requests update directions
+                        if self.request_counter % 5 == 0:
+                            t = threading.Thread(target=self.update_directions)
+                            t.start()
+
+                        # if recalculating directions tell bot to stay
+                        if self.lock.locked():
+                            logging.debug("updating in progress")
+                            next_direction = Config.stay
+                        else: # get next direction
+                            next_direction = self.get_next_direction()
+
+                        # send data to bot and log to console
+                        conn.sendall(next_direction.to_bytes(1, "little"))
+                        logging.debug(f"sent direction: {Config.directions_map[next_direction]}")
+
+
+if __name__ == "__main__":
+    server = DirectionsServer()
+    server.start_server()
