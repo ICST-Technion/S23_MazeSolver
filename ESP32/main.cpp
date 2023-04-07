@@ -1,26 +1,21 @@
+
+
 #include <WiFi.h>
+#include "MotorDriver.h"
+#include <vector>
 
 // Wifi info
 const char *ssid = "GIVE_ME_PI";
 const char *password = "";
-const uint16_t port = 8888;
-const char *host = "10.42.0.1"; // raspberry pi ip
-int connectionTimeOut = 10000;  // 10 ms
+const uint16_t port = 8080;
+const char *host = "192.168.5.1"; // raspberry pi ip
+int connectionTimeOut = 10000;    // 10 ms
 WiFiClient client;
 bool connectedToServer = false;
 
+std::vector<int> logVec;
 #define WIFI_CONNECTION_ERROR -1
 #define ONE_STEP 1
-
-typedef enum
-{
-  RIGHT = 1,
-  LEFT = 2,
-  FORWARD = 3,
-  BACKWARD = 4,
-  HALTED = 5,
-  UNDEFINED = 6
-} DIRECTION;
 
 int connectToWiFi(const char *ssid, const char *password)
 {
@@ -45,15 +40,27 @@ int connectToWiFi(const char *ssid, const char *password)
 
 void sendAStepRequest()
 {
-  client.print("please send me the next step\r");
+  client.print("dir: ");
+}
+
+void flushLogger()
+{
+  client.print("log: ");
+  for (const auto &direction : logVec)
+  {
+    client.print(direction);
+  }
+  // clear the log vector
+  logVec.clear();
 }
 
 void setup()
 {
-
+  setUpPinModes();
   Serial.begin(9600);
   Serial.println("hey...");
   // Connect to Wi-Fi network
+
   WiFi.mode(WIFI_STA);
   if (connectToWiFi(ssid, password) == WIFI_CONNECTION_ERROR)
   {
@@ -78,7 +85,7 @@ void loop()
     connectedToServer = false;
   }
 
-  if (connectedToServer == false)
+  if (connectedToServer == false || client.connected() == false)
   {
     // create a connection with the server.
     if (!client.connect(host, port, connectionTimeOut))
@@ -86,6 +93,7 @@ void loop()
       return;
     }
     connectedToServer = true;
+    Serial.println("connected to the server");
   }
 
   sendAStepRequest();
@@ -105,7 +113,12 @@ void loop()
     int bytesReceived = client.read(&rxBuffer, ONE_STEP);
     if (bytesReceived == ONE_STEP)
     {
-      Serial.print(rxBuffer);
+      Serial.println(rxBuffer);
+      logVec.push_back(rxBuffer);
+      if (logVec.size() > 10)
+      {
+        flushLogger();
+      }
       switch (rxBuffer)
       {
       case FORWARD:
@@ -120,12 +133,14 @@ void loop()
       case LEFT:
         Serial.println("got a left step");
         break;
-      case HALTED:
-        Serial.println("got a halted request");
+      case STOP:
+        Serial.println("got a stop request");
         break;
       default:
         Serial.println("something went wrong ?");
       }
+      processCarMovement(FORWARD);
+      delay(500);
     }
   }
 }
