@@ -3,28 +3,28 @@ import threading
 import time
 import logging
 
-def get_directions():
-    return [1, 2, 3, 4, 5]
+from config import Config
 
 
 class DirectionsServer:
-    def __init__(self, ip, port, update_arr_callback):
+    def __init__(self, ip, port, maze):
         self.ip = ip
         self.port = port
-        self.directions = get_directions()
+        self.directions = []
         self.lock = threading.Lock()
         self.request_counter = 0
-        self.update_callback = update_arr_callback
+        self.maze = maze
+        self.update_directions()
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
         logging.info("started new server instance")
 
     def get_next_direction(self):
-        return self.directions.pop()
+        return Config.actions_to_num[self.directions.pop()]
 
     def update_directions(self):
         logging.debug("updating directions")
         self.lock.acquire()
-        self.directions = self.update_callback()
+        self.directions = self.maze.update()
         # get directions logic
         time.sleep(1)
         self.lock.release()
@@ -68,5 +68,4 @@ class DirectionsServer:
 
 
 if __name__ == "__main__":
-    server = DirectionsServer()
-    server.start_server()
+    pass

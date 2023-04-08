@@ -14,6 +14,8 @@ class Config:
     stay = 5
     finished = 6
     directions_map = {1: "RIGHT", 2: "LEFT", 3:"UP", 4:"down", 5:"STAY", 6:"FINISHED"}
+    actions_to_num = {"UP": 3, "DOWN": 4, "LEFT": 2, "RIGHT": 1,
+                    "DIAG_UL": 5, "DIAG_UR": 5, "DIAG_DL": 5, "DIAG_DR": 5}
 
     # logging
     logging_file = "./maze_solver.log"
