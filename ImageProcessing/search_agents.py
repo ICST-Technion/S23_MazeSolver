@@ -69,7 +69,6 @@ class WeightedAStarAgent(object):
 
             # check if solution
             if self.env.is_final_state(current_state):
-                print(current_state.get_value())
                 return (current_node.get_actions(), current_node.cost, self.expanded)
 
             self.expanded += 1
@@ -77,7 +76,6 @@ class WeightedAStarAgent(object):
             for action in self.env.get_legal_operators(current_state):
                 next_state = self.env.get_next_state(current_state, action)
                 cost = self.env.get_cost(current_state, action)
-                print(cost)
                 next_node = SearchNode(cost + current_node.cost, action, current_node)
 
                 #                

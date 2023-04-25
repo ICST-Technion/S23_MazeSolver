@@ -104,7 +104,6 @@ class MazeSearchEnv(object):
         return legal_actions
 
     def get_next_state(self, state, action):
-
         curr_row, curr_col = state.get_value()
         new_row = curr_row + self.actions[action][0]
         new_col = curr_col + self.actions[action][1]
@@ -116,7 +115,6 @@ class MazeSearchEnv(object):
         maze_copy = self.data.data.copy()
         curr_row, curr_col = self.get_initial_state().get_value()
         maze_copy[curr_row][curr_col] = color
-        print(actions)
         for action in actions:
             curr_row = curr_row + self.actions[action][0]
             curr_col = curr_col + self.actions[action][1]
