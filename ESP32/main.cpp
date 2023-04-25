@@ -54,7 +54,7 @@ void flushLogger()
   logVec.clear();
 }
 
-void setup()
+void setup1()
 {
   setUpPinModes();
   Serial.begin(9600);
@@ -69,7 +69,34 @@ void setup()
   };
 }
 
+void setup()
+{
+  setUpPinModes();
+
+  Serial.begin(9600);
+  Serial.println("hey...");
+}
+
 void loop()
+{
+
+  processCarMovement(FORWARD);
+  delay(2000);
+  processCarMovement(BACKWARD);
+  delay(2000);
+  processCarMovement(STOP);
+  delay(2000);
+  processCarMovement(RIGHT);
+  delay(800);
+  processCarMovement(STOP);
+  delay(2000);
+  processCarMovement(LEFT);
+  delay(800);
+  processCarMovement(STOP);
+  delay(2000);
+}
+
+void loop1()
 {
   // check WiFi connection
   if (WiFi.status() != WL_CONNECTED)
@@ -134,7 +161,7 @@ void loop()
         Serial.println("got a left step");
         break;
       case STOP:
-        Serial.println("got a stop request");
+        Serial.println("got a halted request");
         break;
       default:
         Serial.println("something went wrong ?");
