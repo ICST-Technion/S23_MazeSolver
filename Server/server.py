@@ -32,7 +32,6 @@ class DirectionsServer:
         logging.debug("updating directions")
         self.lock.acquire()
         self.directions = self.maze.update()
-        print(self.directions)
         # get directions logic
         time.sleep(1)
         self.lock.release()
@@ -65,12 +64,13 @@ class DirectionsServer:
                         # if recalculating directions tell bot to stay
                         if self.lock.locked():
                             logging.debug("updating in progress")
-                            next_direction = Config.stay
+                            next_direction = (Config.stay, 0)
                         else: # get next direction
                             next_direction = self.get_next_direction()
 
                         # send data to bot and log to console
-                        conn.sendall(next_direction.to_bytes(1, "little"))
+                        conn.sendall(next_direction[0].to_bytes(1, "little"))
+                        conn.sendall(next_direction[1].to_bytes(2, "little"))
                         logging.debug(f"sent direction: {Config.directions_map[next_direction]}")
 
 
