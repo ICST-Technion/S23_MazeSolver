@@ -22,8 +22,11 @@ class DirectionsServer:
         action = self.directions[0]
         angle = self.maze.get_car_angle()
         if(abs(angle - Config.angle_map[action])) > Config.rotation_sensitivity:
-            return Config.actions_to_num
-        return Config.actions_to_num[self.directions.pop(0)]
+            diff = angle - Config.angle_map[action]
+            rotate_dir = "LEFT" if diff < 0 else "RIGHT"
+            return Config.actions_to_num[rotate_dir], abs(diff)
+        direction = self.directions.pop(0)
+        return Config.actions_to_num[direction[0]], direction[1]
 
     def update_directions(self):
         logging.debug("updating directions")
