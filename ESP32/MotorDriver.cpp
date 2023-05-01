@@ -6,7 +6,36 @@ void processCarMovement(DIRECTION direction)
     switch (direction)
     {
     case FORWARD:
-        Serial.println("UP");
+        Serial.println("FORWARD");
+        // this is the motor - A
+        digitalWrite(IN1, HIGH);
+        digitalWrite(IN2, LOW);
+        // // this is the motor - B
+        digitalWrite(IN3, LOW);
+        digitalWrite(IN4, HIGH);
+        break;
+    case BACKWARD:
+        Serial.println("BACKWARD");
+        // this is the motor - A
+        digitalWrite(IN1, LOW);
+        digitalWrite(IN2, HIGH);
+        // // this is the motor - B
+        digitalWrite(IN3, HIGH);
+        digitalWrite(IN4, LOW);
+        break;
+
+    case LEFT:
+        Serial.println("RIGHT");
+        // this is the motor - A
+        digitalWrite(IN1, HIGH);
+        digitalWrite(IN2, LOW);
+        // // this is the motor - B
+        digitalWrite(IN3, HIGH);
+        digitalWrite(IN4, LOW);
+        break;
+
+    case RIGHT:
+        Serial.println("LEFT");
         // this is the motor - A
         digitalWrite(IN1, LOW);
         digitalWrite(IN2, HIGH);
@@ -15,17 +44,14 @@ void processCarMovement(DIRECTION direction)
         digitalWrite(IN4, HIGH);
         break;
 
-    case BACKWARD:
-        break;
-
-    case RIGHT:
-        break;
-
-    case LEFT:
-        break;
-
     case STOP:
-
+        Serial.println("STOP");
+        // this is the motor - A
+        digitalWrite(IN1, LOW);
+        digitalWrite(IN2, LOW);
+        // // this is the motor - B
+        digitalWrite(IN3, LOW);
+        digitalWrite(IN4, LOW);
         break;
 
     default:

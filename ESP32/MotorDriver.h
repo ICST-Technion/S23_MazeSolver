@@ -15,7 +15,6 @@ typedef enum
 #define EN2 12
 // motor a
 #define IN1 25
-
 #define IN2 33
 // motor b
 #define IN3 27
