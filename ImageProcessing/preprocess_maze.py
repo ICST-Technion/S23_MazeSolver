@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 from skimage.morphology import skeletonize
 
+from config import Config
 # In[26]:
 
 
@@ -58,8 +59,8 @@ def get_end_point(img):
 
 
 def fill_aruco(image, corners):
-    return cv2.rectangle(image, ((int)(corners[0][0][0]), (int)(corners[0][0][1])),
-                         ((int)(corners[0][2][0]), (int)(corners[0][2][1])), 255, -1)
+    return cv2.rectangle(image, ((int)(corners[0][0]), (int)(corners[0][1])),
+                         ((int)(corners[2][0]), (int)(corners[2][1])), 255, -1)
 
 
 def skeletonize_image(image):
@@ -101,13 +102,6 @@ def get_rotation_to_straighten(image):
             max_i = i
     return max_i
 
-
-
-
-def load_image_pre_aruco(path, thresh_val=88):
-    im = straighten_image(im)
-    return im
-
 def load_image_post_aruco(im, thresh_val=88):
     im = threshold_image(im, min_val=thresh_val)
     im = skeletonize_image(im).astype(np.uint8)
@@ -115,16 +109,32 @@ def load_image_post_aruco(im, thresh_val=88):
 
 class ArucoData(object):
     def __init__(self, img, aruco_dict):
-        dictionary = cv2.aruco.getPredefinedDictionary(aruco_dict)
-        parameters = cv2.aruco.DetectorParameters()
-        detector = cv2.aruco.ArucoDetector(dictionary, parameters)
-        markerCorners, markerIds, rejectedCandidates = detector.detectMarkers(img)
-        self.corners = markerCorners[0]
-        self.centerX = (int)(
-            (self.corners[0][0][0] + self.corners[0][1][0] + self.corners[0][2][0] + self.corners[0][3][0]) / 4)
-        self.centerY = (int)(
-            (self.corners[0][0][1] + self.corners[0][1][1] + self.corners[0][2][1] + self.corners[0][3][1]) / 4)
+        # car ID : 1
+        self.aruco_dict = aruco_dict
+        self.aruco_info = {}
+        self.extract_basic_info(img)
 
+    def extract_basic_info(self, img):
+        dictionary = cv2.aruco.getPredefinedDictionary(self.aruco_dict)
+        parameters = cv2.aruco.DetectorParameters()  # remove for rpi
+        detector = cv2.aruco.ArucoDetector(dictionary, parameters)  # remove for rpi
+        # change to cv2.aruco.detectMarkers for rpi
+        markerCorners, markerIds, rejectedCandidates = detector.detectMarkers(img)
+        for index, id in enumerate(markerIds):
+            marker_corners = markerCorners[index][0]
+            p1, p2 = marker_corners[0], marker_corners[1]
+            angle = np.degrees(np.arctan2(p2[1] - p1[1], p2[0] - p1[0])) % 360
+            self.aruco_info[id[0]] = {"corners": marker_corners,
+                                   "centerX": int((marker_corners[0][0]
+                                                   + marker_corners[1][0]
+                                                   + marker_corners[2][0]
+                                                   + marker_corners[3][0]) / 4),
+                                   "centerY": int((marker_corners[0][1]
+                                                   + marker_corners[1][1]
+                                                   + marker_corners[2][1]
+                                                   + marker_corners[3][1]) / 4),
+                                   "rotation": float(angle),
+                                   }
 
 class MazeImage(object):
     def __init__(self, path, aruco_dict=cv2.aruco.DICT_4X4_50):
@@ -136,7 +146,7 @@ class MazeImage(object):
         self.__endpoint = get_end_point(self.data)
         self.__startpoint = get_start_point(self.data)
         self.aruco = ArucoData(data, aruco_dict)
-        fill_aruco(self.data, self.aruco.corners)
+        fill_aruco(self.data, self.aruco.aruco_info[Config.CAR_ID]['corners'])
 
 
     def load_image(self, path):
@@ -146,7 +156,10 @@ class MazeImage(object):
         self.__endpoint = get_end_point(self.data)
         self.__startpoint = get_start_point(self.data)
         self.aruco = ArucoData(data, self.aruco_dict)
-        fill_aruco(self.data, self.aruco.corners)
+        fill_aruco(self.data, self.aruco.aruco_info[1]['corners'])
+
+    def get_car_angle(self):
+        return self.aruco.aruco_info[Config.CAR_ID]
 
     def is_on_maze(self, row, col):
         return self.data[row][col] == MAZE_COLOR
@@ -168,4 +181,4 @@ class MazeImage(object):
         return self.get_current_point()
 
     def get_current_point(self):
-        return self.aruco.centerY, self.aruco.centerX
+        return self.aruco.aruco_info[Config.CAR_ID]['centerY'], self.aruco.aruco_info[Config.CAR_ID]['centerX']

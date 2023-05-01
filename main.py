@@ -16,7 +16,30 @@ class MazeManager(object):
     def get_directions(self):
         actions, cost, expanded = self.a.run_search()
         logging.debug(f"found path: {cost != -1}")
-        return actions
+        return self.process_actions(actions)
+
+    def get_car_angle(self):
+        return self.maze_env.get_car_angle()
+
+    def process_actions(self, actions):
+        new_actions = []
+        counter = 0
+        action_type = actions[0]
+
+        for a in actions:
+            if a != action_type:
+                if counter > Config.min_actions_for_movement:
+                    if new_actions and new_actions[-1][0] == action_type:
+                        new_item = (new_actions[-1][0], new_actions[-1][1] + counter)
+                        new_actions.pop()
+                        new_actions.append(new_item)
+                    else:
+                        new_actions.append((action_type, counter))
+                action_type = a
+                counter = 1
+            else:
+                counter += 1
+        return new_actions
 
     def reload_image(self):
         self.maze_env.load_image(Config.image_file)

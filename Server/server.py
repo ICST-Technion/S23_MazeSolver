@@ -19,12 +19,17 @@ class DirectionsServer:
         logging.info("started new server instance")
 
     def get_next_direction(self):
-        return Config.actions_to_num[self.directions.pop()]
+        action = self.directions[0]
+        angle = self.maze.get_car_angle()
+        if(abs(angle - Config.angle_map[action])) > Config.rotation_sensitivity:
+            return Config.actions_to_num
+        return Config.actions_to_num[self.directions.pop(0)]
 
     def update_directions(self):
         logging.debug("updating directions")
         self.lock.acquire()
         self.directions = self.maze.update()
+        print(self.directions)
         # get directions logic
         time.sleep(1)
         self.lock.release()
@@ -43,10 +48,9 @@ class DirectionsServer:
                 with conn:
                     logging.debug(f"Connected by {addr}")
                     while True:
-
                         # receive data from bot
                         data = conn.recv(1024)
-                        if not data or data.decode() != 'ESP':
+                        if not data or data.decode() != 'dir:':
                             break
 
                         self.request_counter += 1

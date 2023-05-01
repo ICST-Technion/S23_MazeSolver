@@ -1,0 +1,5 @@
+opencv-python
+numpy~=1.21.6
+HeapDict~=1.0.1
+scikit-image~=0.19.3
+matplotlib~=3.5.3

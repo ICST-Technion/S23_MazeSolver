@@ -3,7 +3,7 @@ import cv2
 class Config:
 
     # server socket
-    host = "127.0.0.1"  # should be 192.168.5.1 for RPI
+    host = "127.0.0.1"  # "192.168.5.1"  for RPI
     port = 8080
 
     # bot
@@ -16,6 +16,9 @@ class Config:
     directions_map = {1: "RIGHT", 2: "LEFT", 3:"UP", 4:"down", 5:"STAY", 6:"FINISHED"}
     actions_to_num = {"UP": 3, "DOWN": 4, "LEFT": 2, "RIGHT": 1,
                     "DIAG_UL": 5, "DIAG_UR": 5, "DIAG_DL": 5, "DIAG_DR": 5}
+    angle_map = {"LEFT": 180, "UP": 90, "DOWN": 270, "RIGHT": 0}
+    rotation_sensitivity = 4
+    min_actions_for_movement = 15
 
     # logging
     logging_file = "./maze_solver.log"
@@ -23,4 +26,4 @@ class Config:
     # Image processing
     aruco_dict = cv2.aruco.DICT_4X4_50
     image_file = "./Camera/sample_images/test-3.jpg"
-
+    CAR_ID = 1
