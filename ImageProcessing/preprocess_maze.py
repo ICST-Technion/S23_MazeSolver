@@ -30,13 +30,36 @@ def load_raw_image(path):
     return np.array(raw_image)
 
 
+def cyclic_intersection_pts(pts):
+    """
+    Sorts 4 points in clockwise direction with the first point been closest to 0,0
+    Assumption:
+        There are exactly 4 points in the input and
+        from a rectangle which is not very distorted
+    """
+    if pts.shape[0] != 4:
+        return None
+
+    # Calculate the center
+    center = np.mean(pts, axis=0)
+
+    # Sort the points in clockwise
+    cyclic_pts = [
+        # Top-left
+        pts[np.where(np.logical_and(pts[:, 0] < center[0], pts[:, 1] < center[1]))[0][0], :],
+        # Top-right
+        pts[np.where(np.logical_and(pts[:, 0] > center[0], pts[:, 1] < center[1]))[0][0], :],
+        # Bottom-Right
+        pts[np.where(np.logical_and(pts[:, 0] > center[0], pts[:, 1] > center[1]))[0][0], :],
+        # Bottom-Left
+        pts[np.where(np.logical_and(pts[:, 0] < center[0], pts[:, 1] > center[1]))[0][0], :]
+    ]
+
+    return np.array(cyclic_pts)
+
+
 # In[29]:
-
-
 def threshold_image(img, min_val=127, max_val=255):
-
-
-    # Apply morphological opening to remove small   noise
     thresh = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
     thresh_cp = np.copy(thresh)
     thresh[thresh_cp == 255] = 0
@@ -48,6 +71,7 @@ def threshold_image(img, min_val=127, max_val=255):
     contours, hierarchy = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     # Contour of maximum area
     largest_contour = max(contours, key=cv2.contourArea)
+
     # Create a mask from the largest contour
     mask = np.zeros_like(closed)
     cv2.drawContours(mask, [largest_contour], 0, 255, -1)
@@ -127,6 +151,7 @@ def get_rotation_to_straighten(image):
     return max_i
 
 
+
 def load_image_post_aruco(im, thresh_val=100):
     im = threshold_image(im, min_val=thresh_val)
     cv2.imwrite('res.jpg', im)
@@ -147,9 +172,11 @@ class ArucoData(object):
 
         dictionary = cv2.aruco.getPredefinedDictionary(self.aruco_dict)
         parameters = cv2.aruco.DetectorParameters()  # PC
+        parameters.useAruco3Detection = True
         detector = cv2.aruco.ArucoDetector(dictionary, parameters)  # PC
         # markerCorners, markerIds, rejectedCandidates = cv2.aruco.detectMarkers(img, dictionary)  # RPI
         markerCorners, markerIds, rejectedCandidates = detector.detectMarkers(img) # PC
+        # Detect the ArUco markers in the image
         print(markerIds)
         for index, id in enumerate(markerIds):
             marker_corners = markerCorners[index][0]
@@ -178,6 +205,7 @@ class MazeImage(object):
         self.__startpoint = get_start_point(self.data)
         self.aruco = ArucoData(data, aruco_dict)
         fill_aruco(self.data, self.aruco.aruco_info[Config.CAR_ID]['corners'])
+        fill_aruco(self.data, self.aruco.aruco_info[Config.END_ID]['corners'])
 
         # fill_aruco(self.data, self.aruco.aruco_info[Config.END_ID]['corners'])
         cv2.imwrite('./example.jpg', self.data)
@@ -209,7 +237,7 @@ class MazeImage(object):
 
     def get_end_point(self):
         # consider making not precise point
-        return self.__endpoint
+        # return self.__endpoint
         return self.aruco.aruco_info[Config.END_ID]['centerY'], self.aruco.aruco_info[Config.END_ID]['centerX']
 
     def get_start_point(self):

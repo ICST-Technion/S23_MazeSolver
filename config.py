@@ -37,8 +37,9 @@ class Config:
     logging_file = "./maze_solver.log"
 
     # Image processing
-    aruco_dict = cv2.aruco.DICT_4X4_50
-    image_file = "./Camera/sample_images/good2.jpg"
+    aruco_dict = cv2.aruco.DICT_4X4_100
+    image_file = "./arc.jpg"
+    # image_file = "./Camera/sample_images/good2.jpg"
     CAR_ID = 1
     END_ID = 0
 
