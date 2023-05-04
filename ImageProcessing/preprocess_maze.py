@@ -123,12 +123,15 @@ def get_rotation_to_straighten(image):
             max_i = i
     return max_i
 
+
 def load_image_post_aruco(im, thresh_val=100):
     im = threshold_image(im, min_val=thresh_val)
     cv2.imwrite('res.jpg', im)
     im = skeletonize_image(im).astype(np.uint8)
-
-    return im
+    kernel = np.ones((3, 3), np.uint8)
+    dilation = cv2.dilate(im, kernel, iterations=1)
+    cv2.imwrite('di.jpg', dilation)
+    return dilation
 
 class ArucoData(object):
     def __init__(self, img, aruco_dict):
@@ -168,11 +171,11 @@ class MazeImage(object):
         self.aruco_dict = aruco_dict
         data = rotate_image(data, self.rotation)
         self.data = load_image_post_aruco(data)
-        self.__endpoint = get_end_point(self.data)
+        self.__endpoint = (150, 1102)
         self.__startpoint = get_start_point(self.data)
         self.aruco = ArucoData(data, aruco_dict)
         fill_aruco(self.data, self.aruco.aruco_info[Config.CAR_ID]['corners'])
-        print(self.aruco.aruco_info)
+
         # fill_aruco(self.data, self.aruco.aruco_info[Config.END_ID]['corners'])
         cv2.imwrite('./example.jpg', self.data)
 
@@ -203,6 +206,7 @@ class MazeImage(object):
 
     def get_end_point(self):
         # consider making not precise point
+        return self.__endpoint
         return self.aruco.aruco_info[Config.CAR_ID]['centerY'], self.aruco.aruco_info[Config.CAR_ID]['centerX']
 
     def get_start_point(self):

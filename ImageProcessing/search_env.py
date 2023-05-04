@@ -61,6 +61,9 @@ class MazeSearchEnv(object):
         self.__data_obj = MazeImage(path_to_maze, aruco_dict)
         self.data = self.__data_obj
         end_row, end_col = self.__data_obj.get_end_point()
+        print('end: ', end_row, end_col)
+        start_row, start_col = self.__data_obj.get_start_point()
+        print('start: ', start_row, start_col)
         self.__final_state = MazeState(end_row, end_col)
         self.__cost = 1
 
@@ -123,6 +126,7 @@ class MazeSearchEnv(object):
             curr_row = curr_row + self.actions[action][0]
             curr_col = curr_col + self.actions[action][1]
             maze_copy[curr_row][curr_col] = color
+        cv2.imwrite('path.jpg', maze_copy)
         return maze_copy
 
 

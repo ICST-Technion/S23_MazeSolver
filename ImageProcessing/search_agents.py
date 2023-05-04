@@ -105,7 +105,7 @@ class WeightedAStarAgent(object):
                                                            next_state,
                                                            next_node)
                         closed_nodes.pop(next_state.get_id())
-
+        print(self.expanded)
         return self.FAILURE  # what to do if cant find?
 
     def __get_f_value(self, node, state):
