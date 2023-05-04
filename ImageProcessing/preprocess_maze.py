@@ -78,10 +78,13 @@ def get_end_point(img):
 # In[32]:
 
 
-def fill_aruco(image, corners, extra = 20):
-    print(corners)
-    return cv2.rectangle(image, ((int)(corners[0][0]) - extra, (int)(corners[0][1]) - extra) ,
-                         ((int)(corners[2][0]) + extra, (int)(corners[2][1]) + extra) , 255, -1)
+def fill_aruco(image, corners, extra=20):
+
+    minc = min(corners, key=lambda x: x[0] + x[1])
+    maxc = max(corners, key=lambda x: x[0] + x[1])
+
+    return cv2.rectangle(image, ((int)(minc[0]) - extra, (int)(minc[1]) - extra) ,
+                         ((int)(maxc[0]) + extra, (int)(maxc[1]) + extra) , 255, -1)
 
 
 def skeletonize_image(image):
@@ -207,7 +210,7 @@ class MazeImage(object):
     def get_end_point(self):
         # consider making not precise point
         return self.__endpoint
-        return self.aruco.aruco_info[Config.CAR_ID]['centerY'], self.aruco.aruco_info[Config.CAR_ID]['centerX']
+        return self.aruco.aruco_info[Config.END_ID]['centerY'], self.aruco.aruco_info[Config.END_ID]['centerX']
 
     def get_start_point(self):
         return self.get_current_point()
