@@ -21,7 +21,7 @@ class DirectionsServer:
     def get_next_direction(self):
         action = self.directions[0]
         angle = self.maze.get_car_angle()
-        if(abs(angle - Config.angle_map[action])) > Config.rotation_sensitivity:
+        if (abs(angle - Config.angle_map[action])) > Config.rotation_sensitivity:
             diff = angle - Config.angle_map[action]
             rotate_dir = "LEFT" if diff < 0 else "RIGHT"
             return Config.actions_to_num[rotate_dir], abs(diff)
@@ -36,8 +36,25 @@ class DirectionsServer:
         time.sleep(1)
         self.lock.release()
 
+    def parse_message(self, data):
+        opcode = data[0:1]
+        src_dev = data[1:2]
+        dst_dev = data[2:3]
+        direction = data[3:4]
+        msg_data = data[4:8]
+        return {"opcode": opcode.to_bytes(1, "little"),
+                "src_dev": src_dev.to_bytes(1, "little"),
+                "dst_dev": dst_dev.to_bytes(1, "little"),
+                "direction": direction.to_bytes(1, "little"),
+                "data": msg_data.to_bytes(4, "little")}
+
+    def create_message(self, opcode, src, dst, dir, data):
+        msg = bin(opcode) + bin(src) + bin(dst) + bin(dir) + bin(data)
+        return msg
+
     def start_server(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(5000)
             # start up server
             try:
                 s.bind((self.ip, self.port))
@@ -52,26 +69,38 @@ class DirectionsServer:
                     while True:
                         # receive data from bot
                         data = conn.recv(1024)
-                        if not data or data.decode() != 'dir:':
-                            break
+                        parsed_message = self.parse_message(data.decode())
 
-                        self.request_counter += 1
-                        # every 5 requests update directions
-                        if self.request_counter % 5 == 0:
-                            t = threading.Thread(target=self.update_directions)
-                            t.start()
+                        esp_req = data.decode().split(':')[0]
+                        if not data or parsed_message['opcode'] not in list(Config.opcodes.values()):
+                            continue
+                        if parsed_message['opcode'] == Config.opcodes['DIRECTION_REQUEST']:
+                            self.request_counter += 1
+                            # every 5 requests update directions
+                            # if self.request_counter % 5 == 0:
+                            #     t = threading.Thread(target=self.update_directions)
+                            #     t.start()
+                            # if recalculating directions tell bot to stay
+                            if self.lock.locked():
+                                logging.debug("updating in progress")
+                                next_direction = (Config.stay, 0)
+                            else:  # get next direction
+                                next_direction = self.get_next_direction()
 
-                        # if recalculating directions tell bot to stay
-                        if self.lock.locked():
-                            logging.debug("updating in progress")
-                            next_direction = (Config.stay, 0)
-                        else: # get next direction
-                            next_direction = self.get_next_direction()
-
-                        # send data to bot and log to console
-                        conn.sendall(next_direction[0].to_bytes(1, "little"))
-                        conn.sendall(next_direction[1].to_bytes(2, "little"))
-                        logging.debug(f"sent direction: {Config.directions_map[next_direction]}")
+                            msg = self.create_message(Config.opcodes['DIRECTION_MSG'],
+                                                      Config.dev_codes['RPI'],
+                                                      Config.dev_codes['ESP_32'],
+                                                      next_direction[0],
+                                                      next_direction[1]
+                                                      )
+                            # send data to bot and log to console
+                            conn.sendall(msg)
+                            logging.debug(f"sent direction: {Config.directions_map[next_direction[0]]}"
+                                          f" ,{next_direction[1]}")
+                            data = conn.recv(1024)
+                            parsed_message = self.parse_message(data.decode())
+                            if parsed_message['opcode'] == Config.opcodes['ESP32_ACK']:
+                                logging.debug(f"Received ACK")
 
 
 if __name__ == "__main__":
