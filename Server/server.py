@@ -19,14 +19,14 @@ class DirectionsServer:
         logging.info("started new server instance")
 
     def get_next_direction(self):
-        action = self.directions[0]
+        action = self.directions[0][0]
         angle = self.maze.get_car_angle()
         if (abs(angle - Config.angle_map[action])) > Config.rotation_sensitivity:
             diff = angle - Config.angle_map[action]
             rotate_dir = "LEFT" if diff < 0 else "RIGHT"
-            return Config.actions_to_num[rotate_dir], abs(diff)
+            return Config.actions_to_num[rotate_dir], int(abs(diff))
         direction = self.directions.pop(0)
-        return Config.actions_to_num[direction[0]], direction[1]
+        return Config.actions_to_num["UP"], int(direction[1])
 
     def update_directions(self):
         logging.debug("updating directions")
@@ -42,14 +42,16 @@ class DirectionsServer:
         dst_dev = data[2:3]
         direction = data[3:4]
         msg_data = data[4:8]
-        return {"opcode": opcode.to_bytes(1, "little"),
-                "src_dev": src_dev.to_bytes(1, "little"),
-                "dst_dev": dst_dev.to_bytes(1, "little"),
-                "direction": direction.to_bytes(1, "little"),
-                "data": msg_data.to_bytes(4, "little")}
+        return {"opcode": int.from_bytes(opcode, byteorder="little"),
+                "src_dev": int.from_bytes(src_dev, byteorder="little"),
+                "dst_dev": int.from_bytes(dst_dev, byteorder="little"),
+                "direction": int.from_bytes(direction, byteorder="little"),
+                "data": int.from_bytes(msg_data, byteorder="little")
+                }
 
     def create_message(self, opcode, src, dst, dir, data):
-        msg = bin(opcode) + bin(src) + bin(dst) + bin(dir) + bin(data)
+        msg = opcode.to_bytes(1, "little") + src.to_bytes(1, "little") + dst.to_bytes(1, "little")\
+              + dir.to_bytes(1, "little") + data.to_bytes(4, "little")
         return msg
 
     def start_server(self):
@@ -98,7 +100,7 @@ class DirectionsServer:
                             logging.debug(f"sent direction: {Config.directions_map[next_direction[0]]}"
                                           f" ,{next_direction[1]}")
                             data = conn.recv(1024)
-                            parsed_message = self.parse_message(data.decode())
+                            parsed_message = self.parse_message(data)
                             if parsed_message['opcode'] == Config.opcodes['ESP32_ACK']:
                                 logging.debug(f"Received ACK")
 

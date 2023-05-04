@@ -34,7 +34,27 @@ def load_raw_image(path):
 
 
 def threshold_image(img, min_val=127, max_val=255):
-    ret, thresh = cv2.threshold(img, min_val, max_val, cv2.THRESH_BINARY_INV)
+
+
+    # Apply morphological opening to remove small   noise
+    thresh = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+    thresh_cp = np.copy(thresh)
+    thresh[thresh_cp == 255] = 0
+    thresh[thresh_cp == 0] = 255
+    # use morphology to remove the thin lines
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 1))
+    closed = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+    # find contours
+    contours, hierarchy = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    # Contour of maximum area
+    largest_contour = max(contours, key=cv2.contourArea)
+    # Create a mask from the largest contour
+    mask = np.zeros_like(closed)
+    cv2.drawContours(mask, [largest_contour], 0, 255, -1)
+    thresh[mask == 0] = 255
+    thresh_cp = np.copy(thresh)
+    thresh[thresh_cp == 255] = 0
+    thresh[thresh_cp == 0] = 255
     return thresh
 
 
@@ -58,9 +78,10 @@ def get_end_point(img):
 # In[32]:
 
 
-def fill_aruco(image, corners):
-    return cv2.rectangle(image, ((int)(corners[0][0]), (int)(corners[0][1])),
-                         ((int)(corners[2][0]), (int)(corners[2][1])), 255, -1)
+def fill_aruco(image, corners, extra = 20):
+    print(corners)
+    return cv2.rectangle(image, ((int)(corners[0][0]) - extra, (int)(corners[0][1]) - extra) ,
+                         ((int)(corners[2][0]) + extra, (int)(corners[2][1]) + extra) , 255, -1)
 
 
 def skeletonize_image(image):
@@ -102,9 +123,11 @@ def get_rotation_to_straighten(image):
             max_i = i
     return max_i
 
-def load_image_post_aruco(im, thresh_val=88):
+def load_image_post_aruco(im, thresh_val=100):
     im = threshold_image(im, min_val=thresh_val)
+    cv2.imwrite('res.jpg', im)
     im = skeletonize_image(im).astype(np.uint8)
+
     return im
 
 class ArucoData(object):
@@ -115,11 +138,13 @@ class ArucoData(object):
         self.extract_basic_info(img)
 
     def extract_basic_info(self, img):
+
         dictionary = cv2.aruco.getPredefinedDictionary(self.aruco_dict)
-        parameters = cv2.aruco.DetectorParameters()  # remove for rpi
-        detector = cv2.aruco.ArucoDetector(dictionary, parameters)  # remove for rpi
-        # change to cv2.aruco.detectMarkers for rpi
-        markerCorners, markerIds, rejectedCandidates = detector.detectMarkers(img)
+        parameters = cv2.aruco.DetectorParameters()  # PC
+        detector = cv2.aruco.ArucoDetector(dictionary, parameters)  # PC
+        # markerCorners, markerIds, rejectedCandidates = cv2.aruco.detectMarkers(img, dictionary)  # RPI
+        markerCorners, markerIds, rejectedCandidates = detector.detectMarkers(img) # PC
+        print(markerIds)
         for index, id in enumerate(markerIds):
             marker_corners = markerCorners[index][0]
             p1, p2 = marker_corners[0], marker_corners[1]
@@ -147,7 +172,9 @@ class MazeImage(object):
         self.__startpoint = get_start_point(self.data)
         self.aruco = ArucoData(data, aruco_dict)
         fill_aruco(self.data, self.aruco.aruco_info[Config.CAR_ID]['corners'])
-
+        print(self.aruco.aruco_info)
+        # fill_aruco(self.data, self.aruco.aruco_info[Config.END_ID]['corners'])
+        cv2.imwrite('./example.jpg', self.data)
 
     def load_image(self, path):
         data = load_raw_image(path)
@@ -156,10 +183,11 @@ class MazeImage(object):
         self.__endpoint = get_end_point(self.data)
         self.__startpoint = get_start_point(self.data)
         self.aruco = ArucoData(data, self.aruco_dict)
-        fill_aruco(self.data, self.aruco.aruco_info[1]['corners'])
+        fill_aruco(self.data, self.aruco.aruco_info[Config.CAR_ID]['corners'])
+        fill_aruco(self.data, self.aruco.aruco_info[Config.END_ID]['corners'])
 
     def get_car_angle(self):
-        return self.aruco.aruco_info[Config.CAR_ID]
+        return self.aruco.aruco_info[Config.CAR_ID]['rotation']
 
     def is_on_maze(self, row, col):
         return self.data[row][col] == MAZE_COLOR
@@ -175,7 +203,7 @@ class MazeImage(object):
 
     def get_end_point(self):
         # consider making not precise point
-        return self.__endpoint
+        return self.aruco.aruco_info[Config.CAR_ID]['centerY'], self.aruco.aruco_info[Config.CAR_ID]['centerX']
 
     def get_start_point(self):
         return self.get_current_point()

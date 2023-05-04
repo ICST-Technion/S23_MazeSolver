@@ -3,7 +3,9 @@ import cv2
 
 class Config:
     # server socket
-    host = "127.0.0.1"  # "192.168.5.1"  for RPI
+    # host = "127.0.0.1"  # PC
+    host = "192.168.5.1"  # RPI
+
     port = 8080
 
     # bot
@@ -36,5 +38,7 @@ class Config:
 
     # Image processing
     aruco_dict = cv2.aruco.DICT_4X4_50
-    image_file = "./Camera/sample_images/test-3.jpg"
+    image_file = "./Camera/sample_images/good2.jpg"
     CAR_ID = 1
+    END_ID = 0
+

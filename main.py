@@ -51,10 +51,11 @@ class MazeManager(object):
 
 
 if __name__ == "__main__":
-    # m = MazeImage(Config.image_file, Config.aruco_dict)
-    m = MazeManager()
-    s = DirectionsServer(Config.host, Config.port, m)
-    s.start_server()
+    m = MazeImage(Config.image_file, Config.aruco_dict)
+    # manager = MazeManager()
+
+    # s = DirectionsServer(Config.host, Config.port, manager)
+    # s.start_server()
 
     # maze_env.print_maze()
     #
