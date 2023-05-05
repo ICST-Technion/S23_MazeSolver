@@ -5,16 +5,18 @@
 
 
 import cv2
+import math
 import numpy as np
 from skimage.morphology import skeletonize
 
 from config import Config
 # In[26]:
 
-
+r = 0
 MAZE_COLOR = 255
 BACKGROUND_COLOR = 0
-
+origin = [2, 3]
+refvec = [0, 1]
 
 # In[27]:
 
@@ -29,6 +31,28 @@ def load_raw_image(path):
     # convert your lists into a numpy array of size (N, C, H, W)
     return np.array(raw_image)
 
+
+
+def clockwiseangle_and_distance(point):
+    # Vector between point and the origin: v = p - o
+    vector = [point[0]-origin[0], point[1]-origin[1]]
+    # Length of vector: ||v||
+    lenvector = math.hypot(vector[0], vector[1])
+    # If length is zero there is no angle
+    if lenvector == 0:
+        return -math.pi, 0
+    # Normalize vector: v/||v||
+    normalized = [vector[0]/lenvector, vector[1]/lenvector]
+    dotprod  = normalized[0]*refvec[0] + normalized[1]*refvec[1]     # x1*x2 + y1*y2
+    diffprod = refvec[1]*normalized[0] - refvec[0]*normalized[1]     # x1*y2 - y1*x2
+    angle = math.atan2(diffprod, dotprod)
+    # Negative angles represent counter-clockwise angles so we need to subtract them
+    # from 2*pi (360 degrees)
+    if angle < 0:
+        return 2*math.pi+angle, lenvector
+    # I return first the angle because that's the primary sorting criterium
+    # but if two vectors have the same angle then the shorter distance should come first.
+    return angle, lenvector
 
 def cyclic_intersection_pts(pts):
     """
@@ -58,8 +82,65 @@ def cyclic_intersection_pts(pts):
     return np.array(cyclic_pts)
 
 
+def point_on_image(x: int, y: int, image_shape: tuple):
+    """
+    Returns true is x and y are on the image
+    """
+    return 0 <= y < image_shape[0] and 0 <= x < image_shape[1]
+
+
+
+def angle_to(point):
+  return math.atan2(point[1], point[0])
+
+
+def warp_image(img, thresh, buffer=50):
+    edges = cv2.Canny(thresh, 100, 200, apertureSize=7)
+    # Save the edge detected image
+    cv2.imwrite('edges.jpg', edges)
+    # find edges
+    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    largest_contour = max(contours, key=cv2.contourArea)
+    # Fit a rotated rect
+    rotatedRect = cv2.minAreaRect(largest_contour)
+    print(rotatedRect)
+    corners = cv2.goodFeaturesToTrack(edges, 4, 0.1, 500)
+    corners = corners.reshape(corners.shape[0], 2).astype(np.int32)
+    corners += buffer
+    corners = cyclic_intersection_pts(corners)
+    # Get rotated rect dimensions
+    (x, y), (width, height), angle = rotatedRect
+    print(width, height)
+    dstPts = [[0, 0], [width, 0], [width, height], [0, height]]
+    # Get the transform
+    m = cv2.getPerspectiveTransform(np.float32(corners), np.float32(dstPts))
+    # Transform the image
+    out = cv2.warpPerspective(img, m, (int(width), int(height)))
+    # Save the output
+    return out
+
+def straighten_image(img, contour):
+    rect = cv2.minAreaRect(contour)
+    box = cv2.boxPoints(rect)
+    box = np.int0(box).astype(np.float32)
+    # if the object is planar
+    center_x = img.shape[1] / 2
+    center_y = img.shape[0] / 2
+    target_points = np.array([[0, 0],
+                              [img.shape[1], 0],
+                              [img.shape[1], img.shape[0]],
+                              [0, img.shape[0]]
+                              ], dtype=np.float32)
+    M = cv2.getPerspectiveTransform(box, target_points)
+    # if the object is planar
+    img_fixed = cv2.warpPerspective(img, M, (img.shape[1], img.shape[0]))
+
+    # if the object is not planar
+    # img_fixed = cv2.warpPerspective(img, M, (img.shape[1], img.shape[0]))
+    cv2.imwrite('fixed_image.jpg', img_fixed)
+
 # In[29]:
-def threshold_image(img, min_val=127, max_val=255):
+def threshold_image(img, min_val=127, rotation=0, max_val=255):
     thresh = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
     thresh_cp = np.copy(thresh)
     thresh[thresh_cp == 255] = 0
@@ -76,10 +157,11 @@ def threshold_image(img, min_val=127, max_val=255):
     mask = np.zeros_like(closed)
     cv2.drawContours(mask, [largest_contour], 0, 255, -1)
     thresh[mask == 0] = 255
+    cv2.imwrite('./mask.png', mask)
     thresh_cp = np.copy(thresh)
     thresh[thresh_cp == 255] = 0
     thresh[thresh_cp == 0] = 255
-    return thresh
+    return thresh, mask
 
 
 def get_start_point(img):
@@ -102,7 +184,7 @@ def get_end_point(img):
 # In[32]:
 
 
-def fill_aruco(image, corners, extra=20):
+def fill_aruco(image, corners, extra=10):
 
     minc = min(corners, key=lambda x: x[0] + x[1])
     maxc = max(corners, key=lambda x: x[0] + x[1])
@@ -140,26 +222,27 @@ def get_num_lines(angle, edges):
 def get_rotation_to_straighten(image):
     edges = cv2.Canny(image, 10, 180, apertureSize=3)
     # Save the edge detected image
-    cv2.imwrite('./edges.png', edges)
     max_i = 0
     max_val = 0
-    for i in np.arange(-5, 5, .1):
+    for i in np.arange(-10, 10, 1):
         num_lines = get_num_lines(i, edges)
         if num_lines > max_val:
             max_val = num_lines
             max_i = i
+    print("max", max_i)
     return max_i
 
 
 
-def load_image_post_aruco(im, thresh_val=100):
-    im = threshold_image(im, min_val=thresh_val)
-    cv2.imwrite('res.jpg', im)
-    im = skeletonize_image(im).astype(np.uint8)
+def load_image_post_aruco(im, rotation, thresh_val=100):
+    thresh, mask = threshold_image(im, min_val=thresh_val, rotation=rotation)
+    skel = skeletonize_image(thresh).astype(np.uint8)
     kernel = np.ones((3, 3), np.uint8)
-    dilation = cv2.dilate(im, kernel, iterations=1)
-    cv2.imwrite('di.jpg', dilation)
-    return dilation
+    dilation = cv2.dilate(skel, kernel, iterations=1)
+    warped = warp_image(dilation, mask)
+    warped_original = warp_image(im, mask)
+    cv2.imwrite('warped.jpg', warped_original)
+    return warped, warped_original
 
 class ArucoData(object):
     def __init__(self, img, aruco_dict):
@@ -199,11 +282,11 @@ class MazeImage(object):
         data = load_raw_image(path)
         self.rotation = get_rotation_to_straighten(data)
         self.aruco_dict = aruco_dict
-        data = rotate_image(data, self.rotation)
-        self.data = load_image_post_aruco(data)
+        # data = rotate_image(data, self.rotation)
+        self.data, warped_orig = load_image_post_aruco(data, self.rotation)
         self.__endpoint = (150, 1102)
         self.__startpoint = get_start_point(self.data)
-        self.aruco = ArucoData(data, aruco_dict)
+        self.aruco = ArucoData(warped_orig, aruco_dict)
         fill_aruco(self.data, self.aruco.aruco_info[Config.CAR_ID]['corners'])
         fill_aruco(self.data, self.aruco.aruco_info[Config.END_ID]['corners'])
 
