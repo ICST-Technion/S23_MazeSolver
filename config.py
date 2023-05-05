@@ -38,8 +38,8 @@ class Config:
 
     # Image processing
     aruco_dict = cv2.aruco.DICT_4X4_100
-    image_file = "./Camera/sample_images/arc.jpg"
-    # image_file = "./Camera/sample_images/good1.jpg"
+    # image_file = "./Camera/sample_images/arc.jpg"
+    image_file = "./Camera/sample_images/good1.jpg"
     CAR_ID = 1
     END_ID = 0
 

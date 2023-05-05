@@ -103,15 +103,19 @@ def warp_image(img, thresh, buffer=50):
     largest_contour = max(contours, key=cv2.contourArea)
     # Fit a rotated rect
     rotatedRect = cv2.minAreaRect(largest_contour)
-    print(rotatedRect)
     corners = cv2.goodFeaturesToTrack(edges, 4, 0.1, 500)
     corners = corners.reshape(corners.shape[0], 2).astype(np.int32)
-    corners += buffer
     corners = cyclic_intersection_pts(corners)
     # Get rotated rect dimensions
     (x, y), (width, height), angle = rotatedRect
     print(width, height)
     dstPts = [[0, 0], [width, 0], [width, height], [0, height]]
+    print(corners)
+    corners[0] -= buffer
+    corners[1] = [corners[1][0] + buffer, corners[1][1] - buffer]
+    corners[2] += buffer
+    corners[3] = [corners[3][0] - buffer, corners[3][1] + buffer]
+    print(corners)
     # Get the transform
     m = cv2.getPerspectiveTransform(np.float32(corners), np.float32(dstPts))
     # Transform the image
