@@ -108,14 +108,13 @@ def warp_image(img, thresh, buffer=50):
     corners = cyclic_intersection_pts(corners)
     # Get rotated rect dimensions
     (x, y), (width, height), angle = rotatedRect
-    print(width, height)
+    width = 849 # img.shape[1]
+    height = 1189 # img.shape[0]
     dstPts = [[0, 0], [width, 0], [width, height], [0, height]]
-    print(corners)
     corners[0] -= buffer
     corners[1] = [corners[1][0] + buffer, corners[1][1] - buffer]
     corners[2] += buffer
     corners[3] = [corners[3][0] - buffer, corners[3][1] + buffer]
-    print(corners)
     # Get the transform
     m = cv2.getPerspectiveTransform(np.float32(corners), np.float32(dstPts))
     # Transform the image
@@ -128,8 +127,6 @@ def straighten_image(img, contour):
     box = cv2.boxPoints(rect)
     box = np.int0(box).astype(np.float32)
     # if the object is planar
-    center_x = img.shape[1] / 2
-    center_y = img.shape[0] / 2
     target_points = np.array([[0, 0],
                               [img.shape[1], 0],
                               [img.shape[1], img.shape[0]],
@@ -192,7 +189,6 @@ def fill_aruco(image, corners, extra=10):
 
     minc = min(corners, key=lambda x: x[0] + x[1])
     maxc = max(corners, key=lambda x: x[0] + x[1])
-
     return cv2.rectangle(image, ((int)(minc[0]) - extra, (int)(minc[1]) - extra) ,
                          ((int)(maxc[0]) + extra, (int)(maxc[1]) + extra) , 255, -1)
 
@@ -233,7 +229,6 @@ def get_rotation_to_straighten(image):
         if num_lines > max_val:
             max_val = num_lines
             max_i = i
-    print("max", max_i)
     return max_i
 
 
@@ -293,17 +288,19 @@ class MazeImage(object):
         self.aruco = ArucoData(warped_orig, aruco_dict)
         fill_aruco(self.data, self.aruco.aruco_info[Config.CAR_ID]['corners'])
         fill_aruco(self.data, self.aruco.aruco_info[Config.END_ID]['corners'])
+        print('here',self.aruco.aruco_info[Config.CAR_ID]['rotation'])
+        print('here',self.aruco.aruco_info[Config.END_ID]['rotation'])
 
         # fill_aruco(self.data, self.aruco.aruco_info[Config.END_ID]['corners'])
         cv2.imwrite('./example.jpg', self.data)
 
     def load_image(self, path):
         data = load_raw_image(path)
-        data = rotate_image(data, self.rotation)
-        self.data = load_image_post_aruco(data)
-        self.__endpoint = get_end_point(self.data)
+        # data = rotate_image(data, self.rotation)
+        self.data, warped_orig = load_image_post_aruco(data, self.rotation)
+        self.__endpoint = (150, 1102)
         self.__startpoint = get_start_point(self.data)
-        self.aruco = ArucoData(data, self.aruco_dict)
+        self.aruco = ArucoData(warped_orig, self.aruco_dict)
         fill_aruco(self.data, self.aruco.aruco_info[Config.CAR_ID]['corners'])
         fill_aruco(self.data, self.aruco.aruco_info[Config.END_ID]['corners'])
 

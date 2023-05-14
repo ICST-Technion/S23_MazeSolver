@@ -18,7 +18,7 @@ class Config:
     directions_map = {1: "RIGHT", 2: "LEFT", 3: "UP", 4: "down", 5: "STAY", 6: "FINISHED"}
     actions_to_num = {"UP": 3, "DOWN": 4, "LEFT": 2, "RIGHT": 1,
                       "DIAG_UL": 5, "DIAG_UR": 5, "DIAG_DL": 5, "DIAG_DR": 5}
-    angle_map = {"LEFT": 180, "UP": 90, "DOWN": 270, "RIGHT": 0}
+    angle_map = {"LEFT": 270, "UP": 0, "DOWN": 180, "RIGHT": 90}
     rotation_sensitivity = 4
     min_actions_for_movement = 15
 
@@ -38,8 +38,8 @@ class Config:
 
     # Image processing
     aruco_dict = cv2.aruco.DICT_4X4_100
-    # image_file = "./Camera/sample_images/arc.jpg"
-    image_file = "./Camera/sample_images/good1.jpg"
+    image_file = "./Camera/sample_images/arc.jpg"
+    # image_file = "./Camera/sample_images/good2.jpg"
     CAR_ID = 1
     END_ID = 0
 

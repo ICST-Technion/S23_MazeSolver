@@ -15,7 +15,6 @@ class MazeManager(object):
 
     def get_directions(self):
         actions, cost, expanded = self.a.run_search()
-        print(actions)
         logging.debug(f"found path: {cost != -1}")
         return self.process_actions(actions)
 
@@ -54,9 +53,9 @@ class MazeManager(object):
 if __name__ == "__main__":
     # m = MazeImage(Config.image_file, Config.aruco_dict)
     manager = MazeManager()
-    print(manager.get_directions())
-    # s = DirectionsServer(Config.host, Config.port, manager)
-    # s.start_server()
+    # print(manager.get_directions())
+    s = DirectionsServer(Config.host, Config.port, manager)
+    s.start_server()
 
     # maze_env.print_maze()
     #
