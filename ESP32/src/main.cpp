@@ -36,6 +36,7 @@ int connectToWiFi(const char *ssid, const char *password)
   }
 
   Serial.println("Connected to WiFi");
+  digitalWrite(LED1, HIGH);
   Serial.println(WiFi.localIP());
   return 0;
 }
@@ -75,6 +76,7 @@ void loop()
       }
       // wifi and server connection succeed
       state = DO_COMMANDS;
+      digitalWrite(LED2, HIGH);
     }
     else
     {
@@ -143,11 +145,14 @@ void loop()
   if (WiFi.status() != WL_CONNECTED)
   {
     state = CONNECT_TO_WIFI;
+    digitalWrite(LED1, LOW);
+    digitalWrite(LED2, LOW);
   }
 
   if (WiFi.status() == WL_CONNECTED && client.connected() == false)
   {
     state = CONNECT_TO_SERVER;
+    digitalWrite(LED2, LOW);
   }
 
   delay(2000);

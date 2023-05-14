@@ -14,7 +14,8 @@
 // motor b
 #define IN3 33 // V
 #define IN4 25 // V
-
+#define LED1 35
+#define LED2 34
 #define STBY 26 // V
 
 // // driver motor pins
