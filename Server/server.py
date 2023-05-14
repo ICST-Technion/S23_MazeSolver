@@ -14,9 +14,52 @@ class DirectionsServer:
         self.lock = threading.Lock()
         self.request_counter = 0
         self.maze = maze
+        self.last_action = 'UP'
         self.update_directions()
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
         logging.info("started new server instance")
+
+
+    def get_next_direction2(self):
+        action = self.directions[0][0]
+        if action == self.last_action:
+            direction = self.directions.pop(0)
+            self.last_action = direction[0]
+            return Config.actions_to_num["UP"], int(direction[1])
+        else:
+            direction = self.directions[0]
+            if self.last_action == "UP":
+                if direction[0] == "RIGHT":
+                    self.last_action = "RIGHT"
+                    return Config.actions_to_num["RIGHT"], 680
+                if direction[0] == "LEFT":
+                    self.last_action = "LEFT"
+                    return Config.actions_to_num["LEFT"], 680
+
+            if self.last_action == "RIGHT":
+                if direction[0] == "UP":
+                    self.last_action = "UP"
+                    return Config.actions_to_num["LEFT"], 680
+                if direction[0] == "DOWN":
+                    self.last_action = "DOWN"
+                    return Config.actions_to_num["RIGHT"], 680
+
+            if self.last_action == "LEFT":
+                if direction[0] == "UP":
+                    self.last_action = "UP"
+                    return Config.actions_to_num["RIGHT"], 680
+                if direction[0] == "DOWN":
+                    self.last_action = "DOWN"
+                    return Config.actions_to_num["LEFT"], 680
+
+            if self.last_action == "DOWN":
+                if direction[0] == "RIGHT":
+                    self.last_action = "RIGHT"
+                    return Config.actions_to_num["LEFT"], 680
+                if direction[0] == "LEFT":
+                    self.last_action = "LEFT"
+                    return Config.actions_to_num["RIGHT"], 680
+
 
     def get_next_direction(self):
         action = self.directions[0][0]
@@ -32,6 +75,7 @@ class DirectionsServer:
         logging.debug("updating directions")
         self.lock.acquire()
         self.directions = self.maze.update()
+        print(self.directions)
         # get directions logic
         time.sleep(1)
         self.lock.release()
@@ -71,9 +115,8 @@ class DirectionsServer:
                     while True:
                         # receive data from bot
                         data = conn.recv(1024)
-                        parsed_message = self.parse_message(data.decode())
+                        parsed_message = self.parse_message(data)
 
-                        esp_req = data.decode().split(':')[0]
                         if not data or parsed_message['opcode'] not in list(Config.opcodes.values()):
                             continue
                         if parsed_message['opcode'] == Config.opcodes['DIRECTION_REQUEST']:
@@ -87,7 +130,7 @@ class DirectionsServer:
                                 logging.debug("updating in progress")
                                 next_direction = (Config.stay, 0)
                             else:  # get next direction
-                                next_direction = self.get_next_direction()
+                                next_direction = self.get_next_direction2()
 
                             msg = self.create_message(Config.opcodes['DIRECTION_MSG'],
                                                       Config.dev_codes['RPI'],
