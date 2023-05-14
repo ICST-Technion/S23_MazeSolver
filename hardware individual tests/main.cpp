@@ -1,9 +1,8 @@
 
 
-#include <WiFi.h>
+#include "WiFi.h"
 #include "MotorDriver.h"
 #include <vector>
-#include "main.h"
 
 // Wifi info
 const char *ssid = "GIVE_ME_PI";
@@ -15,6 +14,8 @@ WiFiClient client;
 bool connectedToServer = false;
 
 std::vector<int> logVec;
+#define WIFI_CONNECTION_ERROR -1
+#define ONE_STEP 1
 
 int connectToWiFi(const char *ssid, const char *password)
 {
@@ -53,7 +54,7 @@ void flushLogger()
   logVec.clear();
 }
 
-void setup1()
+void setup()
 {
   setUpPinModes();
   Serial.begin(9600);
@@ -68,34 +69,7 @@ void setup1()
   };
 }
 
-void setup()
-{
-  setUpPinModes();
-
-  Serial.begin(9600);
-  Serial.println("hey...");
-}
-
 void loop()
-{
-
-  processCarMovement(FORWARD);
-  delay(2000);
-  processCarMovement(BACKWARD);
-  delay(2000);
-  processCarMovement(STOP);
-  delay(2000);
-  processCarMovement(RIGHT);
-  delay(800);
-  processCarMovement(STOP);
-  delay(2000);
-  processCarMovement(LEFT);
-  delay(800);
-  processCarMovement(STOP);
-  delay(2000);
-}
-
-void loop1()
 {
   // check WiFi connection
   if (WiFi.status() != WL_CONNECTED)
@@ -160,7 +134,7 @@ void loop1()
         Serial.println("got a left step");
         break;
       case STOP:
-        Serial.println("got a halted request");
+        Serial.println("got a stop request");
         break;
       default:
         Serial.println("something went wrong ?");
@@ -168,91 +142,5 @@ void loop1()
       processCarMovement(FORWARD);
       delay(500);
     }
-  }
-}
-
-ROBOT_STATE state;
-
-void setup2()
-{
-  setUpPinModes();
-  Serial.begin(9600);
-  state = CONNECT_TO_WIFI;
-  // Connect to Wi-Fi network
-
-  WiFi.mode(WIFI_STA);
-  if (connectToWiFi(ssid, password) == WIFI_CONNECTION_ERROR)
-  {
-    Serial.println("connection error occurred...");
-    exit(0);
-  };
-}
-
-void loop2()
-{
-
-  switch (state)
-  {
-  case CONNECT_TO_WIFI:
-    while (connectToWiFi(ssid, password) == WIFI_CONNECTION_ERROR)
-    {
-      Serial.println("Try to connect Wi-Fi network");
-      delay(1000);
-    }
-    // wifi connection succeed
-    state = CONNECT_TO_SERVER;
-    break;
-  case CONNECT_TO_SERVER:
-    if (WiFi.status() == WL_CONNECTED)
-    {
-      while (client.connect(host, port, connectionTimeOut) == SERVER_CONNECTION_ERROR)
-      {
-        Serial.println("Try to connect server");
-        delay(1000);
-      }
-      // wifi and server connection succeed
-      state = DO_COMMANDS;
-    }
-    else
-    {
-      // returning to the initial state
-      state = CONNECT_TO_WIFI;
-    }
-    break;
-  case DO_COMMANDS:
-    uint8_t rxBuffer = UNDEFINED;
-    if (client.available() > 0)
-    {
-      Serial.println("server is available");
-      // read back one line from the server
-
-      int bytesReceived = client.read(&rxBuffer, ONE_STEP);
-      if (bytesReceived == ONE_STEP)
-      {
-        Serial.println(rxBuffer);
-        logVec.push_back(rxBuffer);
-        if (logVec.size() > MAX_BYTE_BEFORE_FLUSH)
-        {
-          flushLogger();
-        }
-        processCarMovement(DIRECTION(rxBuffer));
-      }
-
-      sendAStepRequest();
-    }
-    break;
-  default:
-    break;
-  }
-
-  // check WiFi connection
-  if (WiFi.status() != WL_CONNECTED)
-  {
-    state = CONNECT_TO_WIFI;
-  }
-
-  if (WiFi.status() == WL_CONNECTED && client.connected() == false)
-  {
-    state = CONNECT_TO_SERVER;
   }
 }
