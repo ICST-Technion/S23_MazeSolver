@@ -53,12 +53,12 @@ class MazeSearchEnv(object):
     # is_at_end
     # get_start_point
     # get_data
-    def __init__(self, path_to_maze, aruco_dict):
+    def __init__(self, mi):
         self.actions = {"UP": (-1, 0), "DOWN": (1, 0), "LEFT": (0, -1), "RIGHT": (0, 1),
                         "DIAG_UL": (-1, -1), "DIAG_UR": (-1, 1), "DIAG_DL": (1, -1), "DIAG_DR": (1, 1)}
         self.costs = {"UP": 1, "DOWN": 1, "LEFT": 1, "RIGHT": 1,
                         "DIAG_UL": 10, "DIAG_UR": 10, "DIAG_DL": 10, "DIAG_DR": 10}
-        self.__data_obj = MazeImage(path_to_maze, aruco_dict)
+        self.__data_obj = mi
         self.data = self.__data_obj
         end_row, end_col = self.__data_obj.get_end_point()
         print('end: ', end_row, end_col)
@@ -72,7 +72,7 @@ class MazeSearchEnv(object):
         return self.__data_obj.get_car_angle()
 
     def load_image(self, path):
-        self.__data_obj.load_image(path)
+        self.__data_obj.load_aruco_image(path)
 
     def get_cost(self, state, action):
         return self.costs[action]
@@ -117,6 +117,16 @@ class MazeSearchEnv(object):
         if not self.is_legal_state(new_row, new_col):
             raise RuntimeError("Illegal next state")
         return MazeState(new_row, new_col)
+
+    def actions_to_cords(self, actions):
+        path = []
+        curr_row, curr_col = self.get_initial_state().get_value()
+        path.append((curr_row, curr_col))
+        for action in actions:
+            curr_row = curr_row + self.actions[action][0]
+            curr_col = curr_col + self.actions[action][1]
+            path.append((curr_row, curr_col))
+        return path
 
     def color_maze_path_and_print(self, actions, color=122):
         maze_copy = self.data.data.copy()

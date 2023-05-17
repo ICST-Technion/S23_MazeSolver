@@ -99,18 +99,13 @@ def warp_image(img, thresh, buffer=50):
     # Save the edge detected image
     cv2.imwrite('edges.jpg', edges)
     # find edges
-    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    largest_contour = max(contours, key=cv2.contourArea)
     # Fit a rotated rect
-    rotatedRect = cv2.minAreaRect(largest_contour)
     corners = cv2.goodFeaturesToTrack(edges, 4, 0.1, 500)
     corners = corners.reshape(corners.shape[0], 2).astype(np.int32)
+    print(corners)
     corners = cyclic_intersection_pts(corners)
     # Get rotated rect dimensions
-    (x, y), (width, height), angle = rotatedRect
-    width = 849 # img.shape[1]
-    height = 1189 # img.shape[0]
-    dstPts = [[0, 0], [width, 0], [width, height], [0, height]]
+    dstPts = [[0, 0], [Config.maze_width, 0], [Config.maze_width, Config.maze_height], [0, Config.maze_height]]
     corners[0] -= buffer
     corners[1] = [corners[1][0] + buffer, corners[1][1] - buffer]
     corners[2] += buffer
@@ -118,8 +113,12 @@ def warp_image(img, thresh, buffer=50):
     # Get the transform
     m = cv2.getPerspectiveTransform(np.float32(corners), np.float32(dstPts))
     # Transform the image
-    out = cv2.warpPerspective(img, m, (int(width), int(height)))
+    out = cv2.warpPerspective(img, m, (int(Config.maze_width), int(Config.maze_height)))
     # Save the output
+    return out, m
+
+def warp_image_saved_matrix(img, m):
+    out = cv2.warpPerspective(img, m, (int(Config.maze_width), int(Config.maze_height)))
     return out
 
 def straighten_image(img, contour):
@@ -185,7 +184,7 @@ def get_end_point(img):
 # In[32]:
 
 
-def fill_aruco(image, corners, extra=10):
+def fill_aruco(image, corners, extra=5):
 
     minc = min(corners, key=lambda x: x[0] + x[1])
     maxc = max(corners, key=lambda x: x[0] + x[1])
@@ -238,10 +237,10 @@ def load_image_post_aruco(im, rotation, thresh_val=100):
     skel = skeletonize_image(thresh).astype(np.uint8)
     kernel = np.ones((3, 3), np.uint8)
     dilation = cv2.dilate(skel, kernel, iterations=1)
-    warped = warp_image(dilation, mask)
-    warped_original = warp_image(im, mask)
+    warped, m = warp_image(dilation, mask)
+    warped_original = warp_image_saved_matrix(im, m)
     cv2.imwrite('warped.jpg', warped_original)
-    return warped, warped_original
+    return warped, warped_original, m
 
 class ArucoData(object):
     def __init__(self, img, aruco_dict):
@@ -253,11 +252,11 @@ class ArucoData(object):
     def extract_basic_info(self, img):
 
         dictionary = cv2.aruco.getPredefinedDictionary(self.aruco_dict)
-        parameters = cv2.aruco.DetectorParameters()  # PC
-        parameters.useAruco3Detection = True
-        detector = cv2.aruco.ArucoDetector(dictionary, parameters)  # PC
-        # markerCorners, markerIds, rejectedCandidates = cv2.aruco.detectMarkers(img, dictionary)  # RPI
-        markerCorners, markerIds, rejectedCandidates = detector.detectMarkers(img) # PC
+        # parameters = cv2.aruco.DetectorParameters()  # PC
+        # parameters.useAruco3Detection = True
+        # detector = cv2.aruco.ArucoDetector(dictionary, parameters)  # PC
+        markerCorners, markerIds, rejectedCandidates = cv2.aruco.detectMarkers(img, dictionary)  # RPI
+        # markerCorners, markerIds, rejectedCandidates = detector.detectMarkers(img) # PC
         # Detect the ArUco markers in the image
         print(markerIds)
         for index, id in enumerate(markerIds):
@@ -282,27 +281,22 @@ class MazeImage(object):
         self.rotation = get_rotation_to_straighten(data)
         self.aruco_dict = aruco_dict
         # data = rotate_image(data, self.rotation)
-        self.data, warped_orig = load_image_post_aruco(data, self.rotation)
-        self.__endpoint = (150, 1102)
-        self.__startpoint = get_start_point(self.data)
-        self.aruco = ArucoData(warped_orig, aruco_dict)
-        fill_aruco(self.data, self.aruco.aruco_info[Config.CAR_ID]['corners'])
-        fill_aruco(self.data, self.aruco.aruco_info[Config.END_ID]['corners'])
-        print('here',self.aruco.aruco_info[Config.CAR_ID]['rotation'])
-        print('here',self.aruco.aruco_info[Config.END_ID]['rotation'])
-
+        self.data, warped_orig, self.warp_matrix = load_image_post_aruco(data, self.rotation)
+        self.original_image = np.copy(self.data)
+        self.aruco = None
         # fill_aruco(self.data, self.aruco.aruco_info[Config.END_ID]['corners'])
-        cv2.imwrite('./example.jpg', self.data)
+        cv2.imwrite('./maze_no_aruco_init.jpg', self.data)
 
-    def load_image(self, path):
+    def load_aruco_image(self, path):
         data = load_raw_image(path)
-        # data = rotate_image(data, self.rotation)
-        self.data, warped_orig = load_image_post_aruco(data, self.rotation)
-        self.__endpoint = (150, 1102)
-        self.__startpoint = get_start_point(self.data)
-        self.aruco = ArucoData(warped_orig, self.aruco_dict)
+        data = warp_image_saved_matrix(data, self.warp_matrix)
+        cv2.imwrite("warped-image.jpg", self.data)
+        self.aruco = ArucoData(data, self.aruco_dict)
+        self.data = np.copy(self.original_image)
         fill_aruco(self.data, self.aruco.aruco_info[Config.CAR_ID]['corners'])
         fill_aruco(self.data, self.aruco.aruco_info[Config.END_ID]['corners'])
+        cv2.imwrite("witharuco.jpg", self.data)
+
 
     def get_car_angle(self):
         return self.aruco.aruco_info[Config.CAR_ID]['rotation']

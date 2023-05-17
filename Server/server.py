@@ -67,6 +67,13 @@ class DirectionsServer:
         if (abs(angle - Config.angle_map[action])) > Config.rotation_sensitivity:
             diff = angle - Config.angle_map[action]
             rotate_dir = "LEFT" if diff < 0 else "RIGHT"
+            if abs(diff) > 180:
+                if rotate_dir == "LEFT":
+                    rotate_dir = "RIGHT"
+                    diff = 360 - abs(diff)
+                else:
+                    rotate_dir = "LEFT"
+                    diff = 360 - abs(diff)
             return Config.actions_to_num[rotate_dir], int(abs(diff))
         direction = self.directions.pop(0)
         return Config.actions_to_num["UP"], int(direction[1])
@@ -75,7 +82,6 @@ class DirectionsServer:
         logging.debug("updating directions")
         self.lock.acquire()
         self.directions = self.maze.update()
-        print(self.directions)
         # get directions logic
         time.sleep(1)
         self.lock.release()
@@ -122,9 +128,13 @@ class DirectionsServer:
                         if parsed_message['opcode'] == Config.opcodes['DIRECTION_REQUEST']:
                             self.request_counter += 1
                             # every 5 requests update directions
-                            # if self.request_counter % 5 == 0:
-                            #     t = threading.Thread(target=self.update_directions)
-                            #     t.start()
+                            if self.request_counter % 4 == 0:
+                                self.update_directions()
+                                t = threading.Thread(target=self.update_directions)
+                                t.start()
+                                self.request_counter -= 1
+                                time.sleep(1)
+
                             # if recalculating directions tell bot to stay
                             if self.lock.locked():
                                 logging.debug("updating in progress")

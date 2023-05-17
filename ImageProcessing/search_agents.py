@@ -35,6 +35,21 @@ class Heuristic1(object):
         return abs(end_row - cur_row) + abs(end_col - cur_col)
 
 
+class ContextHeuristic(object):
+    def __init__(self, past_actions):
+        self.val = 1000
+        self.past_actions = past_actions
+
+    def get_h(self, env, state):
+        final_state = env.get_final_state()
+        end_row, end_col = final_state.get_value()
+        cur_row, cur_col = state.get_value()
+        if (cur_row, cur_col) in self.past_actions:
+            return 1
+        else:
+            return abs(end_row - cur_row) + abs(end_col - cur_col) + self.val
+
+
 # In[4]:
 
 
@@ -56,7 +71,7 @@ class WeightedAStarAgent(object):
         self.expanded = 0
         start_node = SearchNode(0, None, None)  # = (cost,action,predeccesor)
         open_nodes = heapdict.heapdict()
-        state = self.start_state
+        state = self.env.get_initial_state()
         # open[state id] = (f value, state object, state node)
         open_nodes[state.get_id()] = (self.__get_f_value(start_node, state), state, start_node)
         closed_nodes = {}

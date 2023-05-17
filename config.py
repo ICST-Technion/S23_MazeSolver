@@ -38,7 +38,10 @@ class Config:
 
     # Image processing
     aruco_dict = cv2.aruco.DICT_4X4_100
-    image_file = "./Camera/sample_images/arc.jpg"
+    image_file = "./Camera/problem_pics/test-3-2.jpg"
+    camera_resolution = (2592, 1944)
+    maze_width = 1189
+    maze_height = 849
     # image_file = "./Camera/sample_images/good2.jpg"
     CAR_ID = 1
     END_ID = 0
