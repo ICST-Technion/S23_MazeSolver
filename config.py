@@ -5,7 +5,7 @@ class Config:
     # server socket
     # host = "127.0.0.1"  # PC
     host = "192.168.5.1"  # RPI
-
+    webserver_port = 8081
     port = 8080
 
     # bot
@@ -26,11 +26,13 @@ class Config:
         "DIRECTION_REQUEST": 1,
         "DIRECTION_MSG": 2,
         "ESP32_ACK": 3,
+        "Control": 4
     }
 
     dev_codes = {
         "RPI": 31,
-        "ESP_32": 32
+        "ESP_32": 32,
+        "Controller": 33
     }
 
     # logging

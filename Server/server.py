@@ -2,12 +2,15 @@ import socket
 import threading
 import time
 import logging
+import asyncio
+import websockets
 
 from config import Config
 
 
 class DirectionsServer:
     def __init__(self, ip, port, maze):
+        self.stopped = True
         self.ip = ip
         self.port = port
         self.directions = []
@@ -18,7 +21,6 @@ class DirectionsServer:
         self.update_directions()
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
         logging.info("started new server instance")
-
 
     def get_next_direction2(self):
         action = self.directions[0][0]
@@ -105,6 +107,8 @@ class DirectionsServer:
         return msg
 
     def start_server(self):
+        server_thread = threading.Thread(target=self.run_server)
+        server_thread.start()
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(5000)
             # start up server
@@ -126,21 +130,25 @@ class DirectionsServer:
                         if not data or parsed_message['opcode'] not in list(Config.opcodes.values()):
                             continue
                         if parsed_message['opcode'] == Config.opcodes['DIRECTION_REQUEST']:
-                            self.request_counter += 1
-                            # every 5 requests update directions
-                            if self.request_counter % 4 == 0:
-                                self.update_directions()
-                                t = threading.Thread(target=self.update_directions)
-                                t.start()
-                                self.request_counter -= 1
-                                time.sleep(1)
-
-                            # if recalculating directions tell bot to stay
-                            if self.lock.locked():
-                                logging.debug("updating in progress")
+                            if self.stopped:
+                                logging.debug("server stopped")
                                 next_direction = (Config.stay, 0)
-                            else:  # get next direction
-                                next_direction = self.get_next_direction2()
+                            else:
+                                self.request_counter += 1
+                                # every 5 requests update directions
+                                if self.request_counter % 4 == 0:
+                                    self.update_directions()
+                                    t = threading.Thread(target=self.update_directions)
+                                    t.start()
+                                    self.request_counter -= 1
+                                    time.sleep(1)
+
+                                # if recalculating directions tell bot to stay
+                                if self.lock.locked():
+                                    logging.debug("updating in progress")
+                                    next_direction = (Config.stay, 0)
+                                else:  # get next direction
+                                    next_direction = self.get_next_direction2()
 
                             msg = self.create_message(Config.opcodes['DIRECTION_MSG'],
                                                       Config.dev_codes['RPI'],
@@ -157,6 +165,26 @@ class DirectionsServer:
                             if parsed_message['opcode'] == Config.opcodes['ESP32_ACK']:
                                 logging.debug(f"Received ACK")
 
+    async def handle_client(self, websocket, path):
+        # Handle incoming messages from the client
+        async for message in websocket:
+            print(f"Received message: {message}")
+            if message == "start":
+                self.stopped = False
+            if message == "stop":
+                self.stopped = True
+            if message == "reset":
+                self.update_directions()
+
+    async def start_webserver(self):
+        async with websockets.serve(self.handle_client, Config.host, Config.webserver_port):
+            print("WebSocket server started")
+            await asyncio.Future()  # Run indefinitely
+
+    def run_server(self):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(self.start_webserver())
 
 if __name__ == "__main__":
     pass
