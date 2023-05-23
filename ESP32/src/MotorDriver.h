@@ -6,30 +6,21 @@
 #include "messages.h"
 
 // driver motor pins
-#define EN1 12 // V
-#define EN2 32 // V
+#define PWMA 12
+#define PWMB 32
 // motor a
-#define IN1 27 // V
-#define IN2 14 // V
+
+#define IN1 27
+#define IN2 14
 // motor b
-#define IN3 33 // V
-#define IN4 25 // V
-#define LED1 35
-#define LED2 34
-#define STBY 26 // V
+#define IN3 33
+#define IN4 25
 
-// // driver motor pins
-// #define EN1 14
-// #define EN2 12
-// // motor a
-// #define IN1 25
-// #define IN2 33
-// // motor b
-// #define IN3 27
-// #define IN4 26
 
-void setUpPinModes();
+#define STBY 26
+
+void setupPinCarModes();
 void processCarMovement(MSG directionMsg);
-void processEasyCarMovement(unsigned char direction);
+void processEasyCarMovement(unsigned char direction, int speedMotorA = 0, int speedMotorB = 0, int timeDelay = 10);
 
 #endif
