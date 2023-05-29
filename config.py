@@ -8,6 +8,16 @@ class Config:
     webserver_port = 8081
     port = 8080
 
+    # Tuning
+    learning_rate = 0.1
+    lower_confidence_thresh = 0.8
+    error_update_thresh = 0.2  # 0 - 1
+
+    # PID params
+    iv = 0.1
+    pv = 1
+    dv = 0
+
     # bot
     right = 1
     left = 2
@@ -47,4 +57,5 @@ class Config:
     # image_file = "./Camera/sample_images/good2.jpg"
     CAR_ID = 1
     END_ID = 0
+    moved_sensitivity = 10
 

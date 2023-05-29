@@ -88,6 +88,9 @@ class MazeSearchEnv(object):
         start_row, start_col = self.__data_obj.get_start_point()
         return MazeState(start_row, start_col)
 
+    def get_current_coords(self):
+        return self.__data_obj.get_current_point()
+
     def is_legal_state(self, row, col):
         if row < 0 or row >= self.__data_obj.get_max_row():
             return False
@@ -139,5 +142,10 @@ class MazeSearchEnv(object):
         cv2.imwrite('path.jpg', maze_copy)
         return maze_copy
 
+    def get_new_position(self, curr, action, val):
+        curr_row, curr_col = curr
+        new_row = curr_row + val*self.actions[action][0]
+        new_col = curr_col + val*self.actions[action][1]
+        return new_row, new_col
 
 # In[ ]:

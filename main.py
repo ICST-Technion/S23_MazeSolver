@@ -8,6 +8,7 @@ from Server.server import DirectionsServer
 import logging
 import subprocess
 import threading
+from distance_calibration.confidence_based import PIDController, ConfidenceCalibrator
 from picamera import PiCamera
 from time import sleep
 
@@ -19,6 +20,8 @@ class MazeManager(object):
         self.is_capturing = False
         self.a = None
         self.maze_env = None
+        self.picture_lock = threading.Lock()
+
 
     def load_env(self):
         self._mi.load_aruco_image(Config.image_file)
@@ -65,13 +68,12 @@ class MazeManager(object):
     def take_image(self):
         camera = PiCamera()
         camera.resolution = Config.camera_resolution
-        camera.start_preview()
-        sleep(4)
-
         while self.is_capturing:
             # Camera warm-up time
+            self.picture_lock.acquire(blocking=True)
             camera.capture(Config.image_file)
             sleep(1)
+            self.picture_lock.release()
 
     def start_capture(self):
         self.is_capturing = True
@@ -81,22 +83,35 @@ class MazeManager(object):
     def stop_capture(self):
         self.is_capturing = False
 
-    def update(self):
+    def get_current_coords(self):
+        self.picture_lock.acquire(blocking=True)
         self.reload_image()
+        self.picture_lock.release()
+        return self.maze_env.get_current_coords()
+
+    def update(self):
+        self.picture_lock.acquire(blocking=True)
+        self.reload_image()
+        self.picture_lock.release()
         return self.get_directions()
+
+    def get_new_position(self, curr, action, val):
+        return self.maze_env.get_new_position(curr, action, val)
 
 
 
 if __name__ == "__main__":
     # m = MazeImage(Config.image_file, Config.aruco_dict)
-    # subprocess.call(['raspistill', '-o', Config.image_file])
+    subprocess.call(['raspistill', '-o', Config.image_file])
     m = MazeImage(Config.image_file, Config.aruco_dict)
     input("Press Enter when ready")
     manager = MazeManager(m)
-    manager.take_image()
-    manager.load_env()
     manager.start_capture()
-    s = DirectionsServer(Config.host, Config.port, manager)
+    sleep(5)
+    manager.load_env()
+    p = PIDController(Config.pv, Config.iv, Config.dv)
+    c = ConfidenceCalibrator(p)
+    s = DirectionsServer(Config.host, Config.port, manager, c)
     s.start_server()
 
     # maze_env.print_maze()
