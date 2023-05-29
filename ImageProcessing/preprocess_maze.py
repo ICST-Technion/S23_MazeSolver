@@ -287,8 +287,11 @@ class MazeImage(object):
         # fill_aruco(self.data, self.aruco.aruco_info[Config.END_ID]['corners'])
         cv2.imwrite('./maze_no_aruco_init.jpg', self.data)
 
-    def load_aruco_image(self, path):
-        data = load_raw_image(path)
+    def load_aruco_image(self, img, from_arr=False):
+        if not from_arr:
+            data = load_raw_image(img)
+        else:
+            data = img
         data = warp_image_saved_matrix(data, self.warp_matrix)
         cv2.imwrite("warped-image.jpg", self.data)
         self.aruco = ArucoData(data, self.aruco_dict)

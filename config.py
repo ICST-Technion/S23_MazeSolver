@@ -9,13 +9,13 @@ class Config:
     port = 8080
 
     # Tuning
-    learning_rate = 0.1
+    learning_rate = 0.001
     lower_confidence_thresh = 0.8
     error_update_thresh = 0.2  # 0 - 1
 
     # PID params
-    iv = 0.1
-    pv = 1
+    iv = 0.4
+    pv = 1.5
     dv = 0
 
     # bot

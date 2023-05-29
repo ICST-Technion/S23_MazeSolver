@@ -11,20 +11,26 @@ import threading
 from distance_calibration.confidence_based import PIDController, ConfidenceCalibrator
 from picamera import PiCamera
 from time import sleep
+import numpy as np
 
 class MazeManager(object):
-    def __init__(self, mi):
+    def __init__(self, mi, live_capture = False):
         self._mi = mi
 
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
         self.is_capturing = False
+        self.live_capture = live_capture
         self.a = None
         self.maze_env = None
         self.picture_lock = threading.Lock()
+        self.image = np.empty((Config.camera_resolution[1], Config.camera_resolution[0]), dtype=np.uint8)
 
 
     def load_env(self):
-        self._mi.load_aruco_image(Config.image_file)
+        if self.live_capture:
+            self._mi.load_aruco_image(self.image, from_arr=True)
+        else:
+            self._mi.load_aruco_image(Config.image_file)
         self.maze_env = MazeSearchEnv(self._mi)
         self.a = WeightedAStarAgent(self.maze_env, 0.5, Heuristic1())
 
@@ -63,7 +69,10 @@ class MazeManager(object):
         return new_actions
 
     def reload_image(self):
-        self.maze_env.load_image(Config.image_file)
+        if self.live_capture:
+            self.maze_env.load_image(self.image, from_arr=True)
+        else:
+            self.maze_env.load_image(Config.image_file)
 
     def take_image(self):
         camera = PiCamera()
@@ -71,8 +80,11 @@ class MazeManager(object):
         while self.is_capturing:
             # Camera warm-up time
             self.picture_lock.acquire(blocking=True)
-            camera.capture(Config.image_file)
-            sleep(1)
+            if self.live_capture:
+                camera.capture(self.image, 'gray')
+            else:
+                camera.capture(Config.image_file)
+            sleep(0.3)
             self.picture_lock.release()
 
     def start_capture(self):
@@ -105,7 +117,7 @@ if __name__ == "__main__":
     subprocess.call(['raspistill', '-o', Config.image_file])
     m = MazeImage(Config.image_file, Config.aruco_dict)
     input("Press Enter when ready")
-    manager = MazeManager(m)
+    manager = MazeManager(m, live_capture=True)
     manager.start_capture()
     sleep(5)
     manager.load_env()

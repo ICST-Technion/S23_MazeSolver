@@ -71,8 +71,8 @@ class MazeSearchEnv(object):
     def get_car_angle(self):
         return self.__data_obj.get_car_angle()
 
-    def load_image(self, path):
-        self.__data_obj.load_aruco_image(path)
+    def load_image(self, path, from_arr=False):
+        self.__data_obj.load_aruco_image(path, from_arr=from_arr)
 
     def get_cost(self, state, action):
         return self.costs[action]

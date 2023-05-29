@@ -18,23 +18,21 @@ class PIDController:
         self.integral = 0  # Accumulated error
         self.last_point = None
 
-    def calculate(self, desired_point, current_point, dt):
-        self.last_point = current_point
+    def calculate(self, num_travelled, num_desired, dt=1):
         # Calculate the error
-        error = dist(desired_point, current_point)
-
+        error = num_desired - num_travelled
+        print(error)
         # Calculate the proportional term
         proportional = self.kp * error
 
         # Calculate the integral term
-        self.integral += error * dt
-        integral = self.ki * self.integral
+        self.integral = self.integral + self.ki*error
 
         # Calculate the derivative term
         derivative = self.kd * (error - self.last_error) / dt
 
         # Calculate the output
-        output = proportional + integral + derivative
+        output = proportional + self.integral + derivative
 
         # Store the current error for the next iteration
         self.last_error = error
@@ -50,19 +48,18 @@ class ConfidenceCalibrator:
         self.max_error = 0
         self.init_time = time.time()
         self.num_sampled = 0
-        self.last_error = 0
+        self.error = 0
         self.error_diff = 0
 
-    def to_calibrate(self, desired_point, current_point):
+    def to_calibrate(self, num_travelled, num_desired):
         self.num_sampled += 1
-        error = self.controller.calculate(desired_point, current_point, self.num_sampled)
-        self.max_error = max(error, self.max_error)
+        self.error = self.controller.calculate(num_travelled, num_desired, 1)
+        self.max_error = max(self.error, self.max_error)
         if self.max_error == 0:
             self.confidence = 1 - 1/self.num_sampled
         else:
-            self.error_diff = error/self.max_error - self.last_error
-            self.confidence = min(1 - error/self.max_error, 1)
-            self.last_error = error/self.max_error
+            self.error_diff = self.error/self.max_error - self.error
+            self.confidence = min(1 - self.error/self.max_error, 1)
         return self.sample(min_val=Config.lower_confidence_thresh)
 
     def sample(self, num_times=4, min_val=0.8, max_val=1):
@@ -78,16 +75,20 @@ class ConfidenceCalibrator:
 
 
 if __name__ == "__main__":
-    p = PIDController(1, 0.1, 0)
+    p = PIDController(1.5, 0.4, 0)
     c = ConfidenceCalibrator(p)
-
-    for i in range(int(input())):
-        w_x, w_y = input().split()
-        x, y = input().split()
-        print(f"to calibrate: {c.to_calibrate((float(w_x), float(w_y)), (float(x), float(y)))}")
-        print(f"confidence: {c.confidence}")
-        print(f"error: {c.last_error}")
-        print("\n")
+    coef = random.uniform(0, 1)
+    learning_rate = 0.001
+    distances = [random.uniform(200, 500) for x in range(20)]
+    print(f"coef: {coef}")
+    print(distances)
+    i = 0
+    for d in distances:
+        c.to_calibrate(d*coef, d)
+        i += 1
+        print(f"error: {c.error} \t\t confidence: {c.confidence}\t\tcoef: {coef}")
+        coef += learning_rate*c.error
+        time.sleep(0.1)
 
 
 

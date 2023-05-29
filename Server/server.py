@@ -30,17 +30,17 @@ class DirectionsServer:
 
         self.last_coords = self.maze.get_current_coords()
         # where we expect vehicle to be, based only on how much we told vehicle to move and not on its actual movement
-        self.expected_coords = self.last_coords
+        self.expected_movement = 0
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
         logging.info("started new server instance")
 
-    def correct_parameter(self, current_coords):
-        if dist(self.last_coords, self.expected_coords) < dist(self.last_coords, current_coords):
-            # overshot, want to correct backwards
-            self.movement_coef -= Config.learning_rate*self.calibration_controller.error_diff
-        else:
-            self.movement_coef += Config.learning_rate*self.calibration_controller.error_diff
+    def correct_parameter(self):
+        self.movement_coef += Config.learning_rate*self.calibration_controller.error
 
+    def get_movement_measures(self, current_coords):
+        num_expected = self.expected_movement
+        num_traveled = dist(self.last_coords, current_coords)
+        return num_traveled, num_expected
 
     def get_next_direction2(self):
         action = self.directions[0][0]
@@ -160,9 +160,10 @@ class DirectionsServer:
                                 current_coords = self.maze.get_current_coords()
                                 # vehicle moved
                                 if dist(self.last_coords, current_coords) > Config.moved_sensitivity:
-                                    if self.calibration_controller.to_calibrate(self.expected_coords, current_coords):
+                                    num_t, num_e = self.get_movement_measures(current_coords)
+                                    if self.calibration_controller.to_calibrate(num_t, num_e):
                                         # calibrate
-                                        self.correct_parameter(current_coords)
+                                        self.correct_parameter()
                                 self.last_coords = current_coords
                                 ######
                                 # every 5 requests update directions
@@ -181,9 +182,7 @@ class DirectionsServer:
                                 else:  # get next direction
                                     self.request_counter += 1
                                     next_direction = self.get_next_direction2()
-                                    self.expected_coords = self.maze.get_new_position(self.expected_coords,
-                                                                                      next_direction[0],
-                                                                                      next_direction[1])
+                                    self.expected_movement = next_direction[1]
 
 
                             msg = self.create_message(Config.opcodes['DIRECTION_MSG'],
