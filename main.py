@@ -11,7 +11,6 @@ import logging
 import time
 import threading
 from distance_calibration.confidence_based import PIDController, ConfidenceCalibrator
-from time import sleep
 import math
 
 def dist(c1, c2):
@@ -116,9 +115,6 @@ class MazeManager(object):
                 counter += 1
         return new_actions
 
-    def get_new_position(self, curr, action, val):
-        return self.maze_env.get_new_position(curr, action, val)
-
     def get_next_direction2(self):
         action = self.directions[0][0]
         if action == self.last_action:
@@ -194,18 +190,9 @@ class MazeManager(object):
                 time.sleep(0.1)
 
 
-    def main_loop(self):
-        while True:
-            # if reached destination
-            self.update_step()
-
 if __name__ == "__main__":
     manager = MazeManager()
     manager.init_capture()
     time.sleep(0.5)
     manager.load_env()
     manager.start_server(blocking=True)
-
-    # maze_env.print_maze()
-    #
-    # cv2.destroyAllWindows()  # destroy all windows
