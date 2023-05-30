@@ -1,6 +1,8 @@
-import cv2
-import sys
+import time
+
 from config import Config
+from Camera.camera import Camera
+from Vehicle.vehicle import Solver
 from ImageProcessing.preprocess_maze import MazeImage
 from ImageProcessing.search_env import MazeSearchEnv
 from ImageProcessing.search_agents import Heuristic1, WeightedAStarAgent, ContextHeuristic
@@ -9,41 +11,47 @@ import logging
 import subprocess
 import threading
 from distance_calibration.confidence_based import PIDController, ConfidenceCalibrator
-from picamera import PiCamera
 from time import sleep
-import numpy as np
+import math
+
+def dist(c1, c2):
+    return math.sqrt((c1[0] - c2[0]) ** 2 +
+              (c1[1] - c2[1]) ** 2)
 
 class MazeManager(object):
-    def __init__(self, mi, live_capture = False):
-        self._mi = mi
-
+    def __init__(self):
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
-        self.is_capturing = False
-        self.live_capture = live_capture
-        self.a = None
-        self.maze_env = None
-        self.picture_lock = threading.Lock()
-        self.image = np.empty((Config.camera_resolution[1], Config.camera_resolution[0]), dtype=np.uint8)
 
+        self.cam = Camera(frame_rate=Config.frame_rate, camera_resolution=Config.camera_resolution)
+        self._mi = MazeImage(Config.aruco_dict)
+        self.vehicle = Solver(Config.initial_speed, Config.initial_speed, Config.learning_rate)
+        self.agent = None
+        self.maze_env = None
+        self.pid_controller_f = PIDController(Config.pv, Config.iv, Config.dv)
+        self.pid_controller_s = PIDController(Config.pv, Config.iv, Config.dv)
+        self.confidence_controller_forward = ConfidenceCalibrator(self.pid_controller_f)
+        self.confidence_controller_sideways = ConfidenceCalibrator(self.pid_controller_s)
+
+        self.server = DirectionsServer(Config.host, Config.port, manager)
+        self.directions = []
 
     def load_env(self):
-        if self.live_capture:
-            self._mi.load_aruco_image(self.image, from_arr=True)
-        else:
-            self._mi.load_aruco_image(Config.image_file)
+        # loads maze without aruco
+        self._mi.load_initial_image(self.cam.retrieve_image())
+        input("press enter to continue")
+        # loads maze with aruco
+        self._mi.load_aruco_image(self.cam.retrieve_image())
         self.maze_env = MazeSearchEnv(self._mi)
-        self.a = WeightedAStarAgent(self.maze_env, 0.5, Heuristic1())
-
+        self.agent = WeightedAStarAgent(self.maze_env, 0.5, Heuristic1())
+        self.vehicle.update_location(self.maze_env.get_current_coords())
 
     def get_directions(self):
-        actions, cost, expanded = self.a.run_search()
+        actions, cost, expanded = self.agent.run_search()
         cords = self.maze_env.actions_to_cords(actions)
         # added to improve A star times
-        self.a.heuristic = ContextHeuristic(cords)
-        print("got cost: ", cost)
+        self.agent.heuristic = ContextHeuristic(cords)
         logging.debug(f"found path: {cost != -1}")
         return self.process_actions(actions)
-
 
     def get_car_angle(self):
         return self.maze_env.get_car_angle()
@@ -69,62 +77,67 @@ class MazeManager(object):
         return new_actions
 
     def reload_image(self):
-        if self.live_capture:
-            self.maze_env.load_image(self.image, from_arr=True)
-        else:
-            self.maze_env.load_image(Config.image_file)
-
-    def take_image(self):
-        camera = PiCamera()
-        camera.resolution = Config.camera_resolution
-        while self.is_capturing:
-            # Camera warm-up time
-            self.picture_lock.acquire(blocking=True)
-            if self.live_capture:
-                camera.capture(self.image, 'gray')
-            else:
-                camera.capture(Config.image_file)
-            sleep(0.3)
-            self.picture_lock.release()
-
-    def start_capture(self):
-        self.is_capturing = True
-        t = threading.Thread(target=self.take_image)
-        t.start()
-
-    def stop_capture(self):
-        self.is_capturing = False
+        self.maze_env.load_image(self.cam.retrieve_image(), from_arr=True)
 
     def get_current_coords(self):
-        self.picture_lock.acquire(blocking=True)
         self.reload_image()
-        self.picture_lock.release()
-        return self.maze_env.get_current_coords()
+        current_cords = self.maze_env.get_current_coords()
+        self.vehicle.update_location(self.maze_env.get_current_coords())
+        return current_cords
 
-    def update(self):
-        self.picture_lock.acquire(blocking=True)
+    def update_directions(self):
+        self.server.updating_started()
         self.reload_image()
-        self.picture_lock.release()
-        return self.get_directions()
+        self.directions = self.get_directions()
+        self.server.finished_updating()
 
-    def get_new_position(self, curr, action, val):
-        return self.maze_env.get_new_position(curr, action, val)
+    def update_parameters(self, forward_error, sideways_error):
+        last_coords = self.vehicle.location()
+        current_coords = self.get_current_coords()
+        # vehicle moved
+        if dist(last_coords, current_coords) > Config.moved_sensitivity:
+            forward_pid = self.confidence_controller_forward.calibrate(forward_error)
+            sideways_pid = self.confidence_controller_forward.calibrate(sideways_error)
+            # calibrate
+            self.vehicle.update_speeds(forward_pid, sideways_pid)
+
+    def init_capture(self):
+        self.cam.stop_live_capture()
+
+    def stop_capture(self):
+        self.cam.stop_live_capture()
+
+    def start_server(self):
+        t = threading.Thread(target=self.start_server)
+        t.start()
+
+    def get_speeds(self):
+        return self.vehicle.get_wheel_speeds()
+
+    def main_loop(self):
+        while True:
+            # if reached destination
+            self.reload_image()
+            current_location = self.get_current_coords()
+            if dist(self.directions[0], current_location) < Config.moved_sensitivity:
+                self.directions.pop(0)
+
+            # TODO: need to understand better if forward is x or y axis in image
+            forward_error = self.directions[0] - current_location[0]
+            sideways_error = self.directions[1] - current_location[1]
+
+            self.update_parameters(forward_error, sideways_error)
+            if self.confidence_controller_forward.to_update():
+                self.update_directions()
 
 
 
 if __name__ == "__main__":
-    # m = MazeImage(Config.image_file, Config.aruco_dict)
-    subprocess.call(['raspistill', '-o', Config.image_file])
-    m = MazeImage(Config.image_file, Config.aruco_dict)
-    input("Press Enter when ready")
-    manager = MazeManager(m, live_capture=True)
-    manager.start_capture()
-    sleep(5)
+    manager = MazeManager()
+    manager.init_capture()
+    time.sleep(0.5)
     manager.load_env()
-    p = PIDController(Config.pv, Config.iv, Config.dv)
-    c = ConfidenceCalibrator(p)
-    s = DirectionsServer(Config.host, Config.port, manager, c)
-    s.start_server()
+    manager.start_server()
 
     # maze_env.print_maze()
     #

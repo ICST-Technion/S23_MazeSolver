@@ -11,7 +11,8 @@ class Config:
     # Tuning
     learning_rate = 0.001
     lower_confidence_thresh = 0.8
-    error_update_thresh = 0.2  # 0 - 1
+    error_update_thresh = 0.05  # 0 - 1
+    initial_speed = 500
 
     # PID params
     iv = 0.4
@@ -52,6 +53,7 @@ class Config:
     aruco_dict = cv2.aruco.DICT_4X4_100
     image_file = "./Camera/problem_pics/test-3-2.jpg"
     camera_resolution = (2592, 1944)
+    frame_rate = 4
     maze_width = 1189
     maze_height = 849
     # image_file = "./Camera/sample_images/good2.jpg"

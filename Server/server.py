@@ -9,105 +9,24 @@ import math
 from config import Config
 
 
-def dist(c1, c2):
-    return math.sqrt((c1[0] - c2[0]) ** 2 +
-              (c1[1] - c2[1]) ** 2)
-
 class DirectionsServer:
-    def __init__(self, ip, port, maze, calibration_controller):
+    def __init__(self, ip, port, maze):
         self.stopped = True
         self.ip = ip
         self.port = port
-        self.directions = []
         self.lock = threading.Lock()
-        self.request_counter = 1
         self.maze = maze
-        self.calibration_controller = calibration_controller
-        self.last_action = 'UP'
-        self.update_directions()
-        # added
-        self.movement_coef = 1
-
-        self.last_coords = self.maze.get_current_coords()
-        # where we expect vehicle to be, based only on how much we told vehicle to move and not on its actual movement
-        self.expected_movement = 0
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
         logging.info("started new server instance")
 
-    def correct_parameter(self):
-        self.movement_coef += Config.learning_rate*self.calibration_controller.error
-
-    def get_movement_measures(self, current_coords):
-        num_expected = self.expected_movement
-        num_traveled = dist(self.last_coords, current_coords)
-        return num_traveled, num_expected
-
-    def get_next_direction2(self):
-        action = self.directions[0][0]
-        if action == self.last_action:
-            direction = self.directions.pop(0)
-            self.last_action = direction[0]
-            return Config.actions_to_num["UP"], self.movement_coef*int(direction[1])
-        else:
-            direction = self.directions[0]
-            if self.last_action == "UP":
-                if direction[0] == "RIGHT":
-                    self.last_action = "RIGHT"
-                    return Config.actions_to_num["RIGHT"],  self.movement_coef*680
-                if direction[0] == "LEFT":
-                    self.last_action = "LEFT"
-                    return Config.actions_to_num["LEFT"], self.movement_coef* 680
-
-            if self.last_action == "RIGHT":
-                if direction[0] == "UP":
-                    self.last_action = "UP"
-                    return Config.actions_to_num["LEFT"],  self.movement_coef*680
-                if direction[0] == "DOWN":
-                    self.last_action = "DOWN"
-                    return Config.actions_to_num["RIGHT"],  self.movement_coef*680
-
-            if self.last_action == "LEFT":
-                if direction[0] == "UP":
-                    self.last_action = "UP"
-                    return Config.actions_to_num["RIGHT"],  self.movement_coef*680
-                if direction[0] == "DOWN":
-                    self.last_action = "DOWN"
-                    return Config.actions_to_num["LEFT"],  self.movement_coef*680
-
-            if self.last_action == "DOWN":
-                if direction[0] == "RIGHT":
-                    self.last_action = "RIGHT"
-                    return Config.actions_to_num["LEFT"],  self.movement_coef*680
-                if direction[0] == "LEFT":
-                    self.last_action = "LEFT"
-                    return Config.actions_to_num["RIGHT"],  self.movement_coef*680
-
-
     def get_next_direction(self):
-        action = self.directions[0][0]
-        angle = self.maze.get_car_angle()
-        if (abs(angle - Config.angle_map[action])) > Config.rotation_sensitivity:
-            diff = angle - Config.angle_map[action]
-            rotate_dir = "LEFT" if diff < 0 else "RIGHT"
-            if abs(diff) > 180:
-                if rotate_dir == "LEFT":
-                    rotate_dir = "RIGHT"
-                    diff = 360 - abs(diff)
-                else:
-                    rotate_dir = "LEFT"
-                    diff = 360 - abs(diff)
-            return Config.actions_to_num[rotate_dir], int(abs(diff))
-        direction = self.directions.pop(0)
-        return Config.actions_to_num["UP"],  self.movement_coef*int(direction[1])
+        return self.maze.get_speeds()
 
-    def update_directions(self):
-        logging.debug("updating directions")
+    def updating_started(self):
         self.lock.acquire()
-        self.directions = self.maze.update()
-        while self.directions == -1:
-            self.directions = self.maze.update()
-        # get directions logic
-        self.lock.release()
+
+    def finished_updating(self):
+        self.lock.acquire()
 
     def parse_message(self, data):
         opcode = data[0:1]
@@ -156,33 +75,12 @@ class DirectionsServer:
                                 logging.debug("server stopped")
                                 next_direction = (Config.stay, 0)
                             else:
-                                ###### added
-                                current_coords = self.maze.get_current_coords()
-                                # vehicle moved
-                                if dist(self.last_coords, current_coords) > Config.moved_sensitivity:
-                                    num_t, num_e = self.get_movement_measures(current_coords)
-                                    if self.calibration_controller.to_calibrate(num_t, num_e):
-                                        # calibrate
-                                        self.correct_parameter()
-                                self.last_coords = current_coords
-                                ######
-                                # every 5 requests update directions
-                                ######## experimental, if error was bigger than some thresh update maze
-                                if self.calibration_controller.error_diff > Config.error_update_thresh:
-                                    self.update_directions()
-                                    self.request_counter += 1
-                                    t = threading.Thread(target=self.update_directions)
-                                    t.start()
-                                    time.sleep(1)
-
                                 # if recalculating directions tell bot to stay
                                 if self.lock.locked():
                                     logging.debug("updating in progress")
                                     next_direction = (Config.stay, 0)
                                 else:  # get next direction
-                                    self.request_counter += 1
-                                    next_direction = self.get_next_direction2()
-                                    self.expected_movement = next_direction[1]
+                                    next_direction = self.get_next_direction()
 
 
                             msg = self.create_message(Config.opcodes['DIRECTION_MSG'],
