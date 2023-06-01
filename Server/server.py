@@ -35,17 +35,23 @@ class DirectionsServer:
         src_dev = data[1:2]
         dst_dev = data[2:3]
         direction = data[3:4]
-        msg_data = data[4:8]
+        l = data[4:8]
+        r = data[8:12]
+        time = data[12:16]
+
         return {"opcode": int.from_bytes(opcode, byteorder="little"),
                 "src_dev": int.from_bytes(src_dev, byteorder="little"),
                 "dst_dev": int.from_bytes(dst_dev, byteorder="little"),
                 "direction": int.from_bytes(direction, byteorder="little"),
-                "data": int.from_bytes(msg_data, byteorder="little")
+                "time": int.from_bytes(time, byteorder="little"),
+                "left_speed": int.from_bytes(l, byteorder="little"),
+                "right_speed": int.from_bytes(r, byteorder="little")
                 }
 
-    def create_message(self, opcode, src, dst, dir, data):
+    def create_message(self, opcode, src, dst, dir, l, r, time):
         msg = opcode.to_bytes(1, "little") + src.to_bytes(1, "little") + dst.to_bytes(1, "little")\
-              + dir.to_bytes(1, "little") + data.to_bytes(4, "little")
+              + dir.to_bytes(1, "little") \
+              + l.to_bytes(4, "little") + r.to_bytes(4, "little") + time.to_bytes(4, "little")
         return msg
 
     def start_server(self):
@@ -76,13 +82,13 @@ class DirectionsServer:
                         if parsed_message['opcode'] == Config.opcodes['DIRECTION_REQUEST']:
                             if self.stopped:
                                 logging.debug("server stopped")
-                                next_direction = (Config.stay, 0)
+                                next_direction = (Config.stay, 0, 0, 0)
                             else:
                                 # recalculate coefficient and confidence from last movement
                                 self.maze.update_step()
                                 if self.lock.locked():
                                     logging.debug("updating in progress")
-                                    next_direction = (Config.stay, 0)
+                                    next_direction = (Config.stay, 0, 0, 0)
                                 else:  # get next direction
                                     next_direction = self.maze.get_next_direction()
 
@@ -90,13 +96,15 @@ class DirectionsServer:
                                                       Config.dev_codes['RPI'],
                                                       Config.dev_codes['ESP_32'],
                                                       next_direction[0],
-                                                      next_direction[1]
+                                                      next_direction[1],
+                                                      next_direction[2],
+                                                      next_direction[3]
                                                       )
                             # send data to bot and log to console
                             conn.sendall(msg)
                             print(next_direction)
                             logging.debug(f"sent direction: {Config.directions_map[next_direction[0]]}"
-                                          f" ,{next_direction[1]}")
+                                          f" ,{next_direction[1]}, {next_direction[2], next_direction[3]}")
                             data = conn.recv(1024)
                             parsed_message = self.parse_message(data)
                             if parsed_message['opcode'] == Config.opcodes['ESP32_ACK']:

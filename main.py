@@ -136,39 +136,40 @@ class MazeManager(object):
             self.directions[0] = temp
             if self.directions[0][1] <= 0:
                 self.directions.pop(0)
-            return Config.actions_to_num["UP"], int(self.movement_coef * amount)
+            speed_l, speed_r = self.robot.get_speeds()
+            return Config.actions_to_num["UP"], speed_l, speed_r, int(self.movement_coef * amount)
         else:
             if self.last_action == "UP":
                 if action == "RIGHT":
                     self.last_action = "RIGHT"
-                    return Config.actions_to_num["RIGHT"], Config.right_angle
+                    return Config.actions_to_num["RIGHT"], 0, 0, Config.right_angle
                 if action == "LEFT":
                     self.last_action = "LEFT"
-                    return Config.actions_to_num["LEFT"], Config.right_angle
+                    return Config.actions_to_num["LEFT"], 0, 0, Config.right_angle
 
             if self.last_action == "RIGHT":
                 if action == "UP":
                     self.last_action = "UP"
-                    return Config.actions_to_num["LEFT"], Config.right_angle
+                    return Config.actions_to_num["LEFT"], 0, 0, Config.right_angle
                 if action == "DOWN":
                     self.last_action = "DOWN"
-                    return Config.actions_to_num["RIGHT"], Config.right_angle
+                    return Config.actions_to_num["RIGHT"], 0, 0,  Config.right_angle
 
             if self.last_action == "LEFT":
                 if action == "UP":
                     self.last_action = "UP"
-                    return Config.actions_to_num["RIGHT"], Config.right_angle
+                    return Config.actions_to_num["RIGHT"], 0, 0,  Config.right_angle
                 if action == "DOWN":
                     self.last_action = "DOWN"
-                    return Config.actions_to_num["LEFT"], Config.right_angle
+                    return Config.actions_to_num["LEFT"], 0, 0,  Config.right_angle
 
             if self.last_action == "DOWN":
                 if action == "RIGHT":
                     self.last_action = "RIGHT"
-                    return Config.actions_to_num["LEFT"], Config.right_angle
+                    return Config.actions_to_num["LEFT"], 0, 0, Config.right_angle
                 if action == "LEFT":
                     self.last_action = "LEFT"
-                    return Config.actions_to_num["RIGHT"], Config.right_angle
+                    return Config.actions_to_num["RIGHT"], 0, 0,  Config.right_angle
 
     def update_step(self):
         last_loc = self.get_last_coords()
