@@ -3,13 +3,40 @@
 #include "messages.h"
 #include <vector>
 using namespace std;
+#define LED1 35
+#define MAX_SPEED 255
 
+// #define LED2 34
 vector<double> rightSpeedVec = {1, 2, 3, 4, 5};
 vector<double> leftSpeedVec = {5, 4, 3, 2, 1};
 
-void LineFollowerForward(unsigned int time_angle);
+void LineFollowerForward(int time_angle);
 void processCarMovement(MSG directionMSG);
 void processEasyCarMovement(unsigned char direction, int speedMotorA, int speedMotorB, int timeDelay);
+void newForward(MSG forward_msg);
+
+void newForward(MSG forward_msg)
+{
+    if (forward_msg.direction != FORWARD || forward_msg.speed_left_wheel > MAX_SPEED || forward_msg.speed_left_wheel < 0 || forward_msg.speed_right_wheel > MAX_SPEED || forward_msg.speed_right_wheel < 0)
+    {
+        return;
+    }
+
+    Serial.println("FORWARD");
+    digitalWrite(LED1, HIGH);
+
+    //  this is the motor - A
+    digitalWrite(IN1, HIGH);
+    digitalWrite(IN2, LOW);
+    analogWrite(PWMA, forward_msg.speed_right_wheel);
+
+    // // this is the motor - B
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, HIGH);
+    analogWrite(PWMB, forward_msg.speed_left_wheel);
+    Serial.println(forward_msg.speed_right_wheel);
+    Serial.println(forward_msg.speed_right_wheel);
+}
 
 void processCarMovement(MSG directionMSG)
 {
@@ -17,8 +44,11 @@ void processCarMovement(MSG directionMSG)
     {
     case FORWARD:
         Serial.println("FORWARD");
+        digitalWrite(LED1, HIGH);
         LineFollowerForward(directionMSG.time_angle);
-        // stop the car
+        newForward(directionMSG);
+        // digitalWrite(LED1, HIGH);
+        //  stop the car
         directionMSG.direction = STOP;
         processCarMovement(directionMSG);
         break;
@@ -27,6 +57,7 @@ void processCarMovement(MSG directionMSG)
         // this is the motor - A
         digitalWrite(IN1, LOW);
         digitalWrite(IN2, HIGH);
+        //
         // // this is the motor - B
         digitalWrite(IN3, HIGH);
         digitalWrite(IN4, LOW);
@@ -42,10 +73,12 @@ void processCarMovement(MSG directionMSG)
         // this is the motor - A
         digitalWrite(IN1, HIGH);
         digitalWrite(IN2, LOW);
-        // // this is the motor - B
+        // digitalWrite(LED1, HIGH);
+        //  // this is the motor - B
         digitalWrite(IN3, HIGH);
         digitalWrite(IN4, LOW);
-
+        analogWrite(PWMB, 255);
+        analogWrite(PWMA, 255);
         delay(680);
         directionMSG.direction = STOP;
         processCarMovement(directionMSG);
@@ -57,10 +90,14 @@ void processCarMovement(MSG directionMSG)
         // this is the motor - A
         digitalWrite(IN1, LOW);
         digitalWrite(IN2, HIGH);
-        // // this is the motor - B
+        // digitalWrite(LED1, HIGH);
+        //  // this is the motor - B
         digitalWrite(IN3, LOW);
         digitalWrite(IN4, HIGH);
-
+        analogWrite(PWMB, 255);
+        analogWrite(PWMA, 255);
+        // analogWrite(PWMA, 255);
+        // analogWrite(PWMB, 0);
         delay(680);
         directionMSG.direction = STOP;
         processCarMovement(directionMSG);
@@ -71,7 +108,10 @@ void processCarMovement(MSG directionMSG)
         // this is the motor - A
         digitalWrite(IN1, LOW);
         digitalWrite(IN2, LOW);
-        // // this is the motor - B
+        analogWrite(PWMB, 0);
+        analogWrite(PWMA, 0);
+        // digitalWrite(LED1, HIGH);
+        //  // this is the motor - B
         digitalWrite(IN3, LOW);
         digitalWrite(IN4, LOW);
         break;
@@ -93,6 +133,7 @@ void processEasyCarMovement(unsigned char direction, int speedMotorA, int speedM
         digitalWrite(IN1, HIGH);
         digitalWrite(IN2, LOW);
         analogWrite(PWMA, speedMotorA);
+        // digitalWrite(LED1, HIGH);
 
         // // this is the motor - B
         digitalWrite(IN3, LOW);
@@ -101,19 +142,20 @@ void processEasyCarMovement(unsigned char direction, int speedMotorA, int speedM
 
         delay(timeDelay);
 
-        processEasyCarMovement(STOP);
+        processEasyCarMovement(STOP, 0, 0, 0);
         break;
     case BACKWARD:
         Serial.println("BACKWARD");
         // this is the motor - A
         digitalWrite(IN1, LOW);
         digitalWrite(IN2, HIGH);
-        // // this is the motor - B
+        // digitalWrite(LED1, HIGH);
+        //  // this is the motor - B
         digitalWrite(IN3, HIGH);
         digitalWrite(IN4, LOW);
 
         delay(700);
-        processEasyCarMovement(STOP);
+        processEasyCarMovement(STOP, 0, 0, 0);
         break;
 
     case LEFT:
@@ -122,12 +164,13 @@ void processEasyCarMovement(unsigned char direction, int speedMotorA, int speedM
         // this is the motor - A
         digitalWrite(IN1, HIGH);
         digitalWrite(IN2, LOW);
-        // // this is the motor - B
+        // digitalWrite(LED1, HIGH);
+        //  // this is the motor - B
         digitalWrite(IN3, HIGH);
         digitalWrite(IN4, LOW);
 
         delay(670);
-        processEasyCarMovement(STOP);
+        processEasyCarMovement(STOP, 0, 0, 0);
 
         break;
 
@@ -136,12 +179,13 @@ void processEasyCarMovement(unsigned char direction, int speedMotorA, int speedM
         // this is the motor - A
         digitalWrite(IN1, LOW);
         digitalWrite(IN2, HIGH);
-        // // this is the motor - B
+        // digitalWrite(LED1, HIGH);
+        //  // this is the motor - B
         digitalWrite(IN3, LOW);
         digitalWrite(IN4, HIGH);
 
         delay(670);
-        processEasyCarMovement(STOP);
+        processEasyCarMovement(STOP, 0, 0, 0);
         break;
 
     case STOP:
@@ -149,7 +193,9 @@ void processEasyCarMovement(unsigned char direction, int speedMotorA, int speedM
         // this is the motor - A
         digitalWrite(IN1, LOW);
         digitalWrite(IN2, LOW);
-        // // this is the motor - B
+
+        // digitalWrite(LED1, HIGH);
+        //  // this is the motor - B
         digitalWrite(IN3, LOW);
         digitalWrite(IN4, LOW);
         break;
@@ -161,7 +207,7 @@ void processEasyCarMovement(unsigned char direction, int speedMotorA, int speedM
     }
 }
 
-void LineFollowerForward(unsigned int time_angle)
+void LineFollowerForward(int time_angle)
 {
     // default values for speed.
     // changes if the line follower get indication to deviation.
@@ -195,14 +241,16 @@ void LineFollowerForward(unsigned int time_angle)
         digitalWrite(IN3, LOW);
         digitalWrite(IN4, HIGH);
         analogWrite(PWMB, speedLeft);
-
-        delay(10);
+        Serial.println(speedLeft);
+        Serial.println(speedRight);
+        delay(35);
         time_angle -= 10;
     }
 }
 
 void setupPinCarModes()
 {
+    pinMode(LED1, OUTPUT);
     // set the ENABLES pins to output type
     pinMode(PWMA, OUTPUT);
     pinMode(PWMB, OUTPUT);

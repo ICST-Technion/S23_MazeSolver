@@ -7,10 +7,13 @@
 #include <string>
 #include "messages.h"
 #include "connections.h"
+
 using namespace std;
 
-#define LED1 35
-#define LED2 34
+#define LED1 (35)
+#define LED2 (34)
+#define ERROR (-1)
+#define SUCCESS (0)
 
 // Wifi info
 const char *ssid = "GIVE_ME_PI";
@@ -18,6 +21,7 @@ const char *password = "";
 const uint16_t port = 8080;
 const char *host = "192.168.5.1"; // raspberry pi ip
 int connectionTimeOut = 10000;    // 10 ms
+
 WiFiClient client;
 
 ROBOT_STATE state;
@@ -30,8 +34,8 @@ void setup()
   setupPinCarModes();
 
   // leds
-  pinMode(LED1, OUTPUT);
-  pinMode(LED2, OUTPUT);
+  // pinMode(LED1, OUTPUT);
+  // pinMode(LED2, OUTPUT);
 
   // line follower pins
   pinMode(LFO_R, INPUT);
@@ -52,16 +56,16 @@ void loop()
   case CONNECT_TO_WIFI:
     // blocking
     connectToWiFi(ssid, password);
-    digitalWrite(LED1, HIGH);
-    // wifi connected
+    // digitalWrite(LED1, HIGH);
+    //  wifi connected
     state = CONNECT_TO_SERVER;
     break;
   case CONNECT_TO_SERVER:
     if (WiFi.status() == WL_CONNECTED)
     {
       connectToServer(client, host, port);
-      digitalWrite(LED2, HIGH);
-      // wifi and server connection succeed
+      // digitalWrite(LED2, HIGH);
+      //  wifi and server connection succeed
       state = DO_COMMANDS;
     }
     else
@@ -86,25 +90,7 @@ void loop()
     }
 
     MSG directionMsg;
-    int directionMsgCounter = 0;
-    int bytesRemain = sizeof(directionMsg);
-    bool timeout = false;
-    while (bytesRemain > 0)
-    {
-      bytesRemain -= client.read((uint8_t *)&directionMsg, bytesRemain);
-      if (bytesRemain > 0 && directionMsgCounter > MAX_TEMPS_BEFORE_BREAK)
-      {
-        timeout = true;
-        break;
-      }
-      if (bytesRemain > 0)
-      {
-        directionMsgCounter++;
-        delay(500);
-      }
-    }
-
-    if (timeout)
+    if (readMessage(&directionMsg, &client) != SUCCESS)
     {
       break;
     }
@@ -118,8 +104,8 @@ void loop()
     }
 
     buildAndSendAckMsg(&client, directionMsg);
-
     processCarMovement(directionMsg);
+
     break;
   }
 

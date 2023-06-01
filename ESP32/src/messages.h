@@ -2,6 +2,9 @@
 #define __MESSAGES_H
 
 #include "WiFi.h"
+#define ERROR (-1)
+#define SUCCESS (0)
+#define MAX_TEMPS_BEFORE_BREAK (10)
 
 typedef enum
 {
@@ -31,11 +34,15 @@ typedef struct msg
     unsigned char src_device;
     unsigned char dst_device;
     unsigned char direction;
-    unsigned int time_angle;
+    int speed_right_wheel;
+    int speed_left_wheel;
+    int time_angle;
 } MSG;
 
 void requestDirection(WiFiClient *client);
 
 void buildAndSendAckMsg(WiFiClient *client, MSG direction_msg);
+
+int readMessage(MSG *directionMsg, WiFiClient *client);
 
 #endif

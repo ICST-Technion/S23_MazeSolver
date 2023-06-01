@@ -1,8 +1,6 @@
 #ifndef __MAIN_H
 #define __MAIN_H
 
-#define MAX_TEMPS_BEFORE_BREAK 10
-
 // line follwer pins
 #define LFO_R 19
 #define LFI_R 18
@@ -17,6 +15,5 @@ typedef enum
     DO_COMMANDS,
 
 } ROBOT_STATE;
-
 
 #endif
