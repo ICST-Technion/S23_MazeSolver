@@ -30,7 +30,7 @@ class Config:
                       "DIAG_UL": 5, "DIAG_UR": 5, "DIAG_DL": 5, "DIAG_DR": 5}
     angle_map = {"LEFT": 270, "UP": 0, "DOWN": 180, "RIGHT": 90}
     rotation_sensitivity = 4
-    min_actions_for_movement = 15
+    min_actions_for_movement = 20
 
     opcodes = {
         "DIRECTION_REQUEST": 1,
@@ -51,12 +51,12 @@ class Config:
     # Image processing
     aruco_dict = cv2.aruco.DICT_4X4_100
     image_file = "./Camera/problem_pics/test-3-2.jpg"
-    camera_resolution = (2592, 1944)
+    camera_resolution = (2592, 1936)
     frame_rate = 4
     maze_width = 1189
     maze_height = 849
     # image_file = "./Camera/sample_images/good2.jpg"
     CAR_ID = 1
     END_ID = 0
-    moved_sensitivity = 10
+    moved_sensitivity = 50
 

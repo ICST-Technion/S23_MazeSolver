@@ -49,10 +49,11 @@ class MazeManager(object):
         self.server.updating_started()
         self.reload_image()
         self.directions = self.get_directions()
+        print(self.directions)
         self.server.finished_updating()
 
     def reload_image(self):
-        self.maze_env.load_image(self.cam.retrieve_image(), from_arr=True)
+        self.maze_env.load_image(self.cam.retrieve_image())
 
     def get_current_coords(self):
         self.reload_image()
@@ -62,12 +63,14 @@ class MazeManager(object):
     def get_last_coords(self):
         return self.maze_env.get_current_coords()
 
-    def update_parameters(self, forward_error):
-        last_coords = self.maze_env.get_current_coords()
-        current_coords = self.get_current_coords()
+    def update_parameters(self, forward_error, current, last):
+        print("trying calibrate")
+        print(last, current)
         # vehicle moved
-        if dist(last_coords, current_coords) > Config.moved_sensitivity:
+        if dist(last, current) > Config.moved_sensitivity:
+            print("calibrating")
             forward_pid = self.confidence_controller_forward.calibrate(forward_error)
+            print(f"pid: {forward_pid}")
             self.movement_coef += Config.learning_rate * forward_pid
 
     def init_capture(self):
@@ -78,9 +81,9 @@ class MazeManager(object):
 
     def start_server(self, blocking=False):
         if blocking:
-            self.start_server()
+            self.server.start_server()
         else:
-            t = threading.Thread(target=self.start_server)
+            t = threading.Thread(target=self.server.start_server)
             t.start()
 
     def get_directions(self):
@@ -118,10 +121,11 @@ class MazeManager(object):
     def get_next_direction2(self):
         action = self.directions[0][0]
         if action == self.last_action:
-            direction = self.directions.pop(0)
+            direction = self.directions[0] # self.directions.pop(0)
             self.last_movement = int(direction[1])
             self.last_action = direction[0]
-            return Config.actions_to_num["UP"], self.movement_coef*int(direction[1])
+            print(f"Sending: {Config.actions_to_num['UP'], int(self.movement_coef*int(direction[1]))}")
+            return Config.actions_to_num["UP"], int(self.movement_coef*int(direction[1]))
         else:
             direction = self.directions[0]
             if self.last_action == "UP":
@@ -179,20 +183,27 @@ class MazeManager(object):
         last_loc = self.get_last_coords()
         current_location = self.get_current_coords()
         # if moved and not updating currently
-        if dist(last_loc, current_location) > Config.moved_sensitivity and not self.server.lock.locked():
-            num_expected = self.last_movement
-            num_traveled = dist(last_loc, current_location)
-            forward_error = num_expected - num_traveled
-            self.update_parameters(forward_error)
-            if self.confidence_controller_forward.to_update():
-                t = threading.Thread(target=self.update_directions)
-                t.start()
-                time.sleep(0.1)
+        # if dist(last_loc, current_location) > Config.moved_sensitivity and not self.server.lock.locked():
+        num_expected = self.last_movement
+        num_traveled = dist(last_loc, current_location)
+        new_tup = (self.directions[0][0], self.directions[0][1] - num_traveled)
+        if self.directions[0][1] <= 0:
+            self.directions.pop(0)
+        self.directions[0] = new_tup
+        forward_error = num_expected - num_traveled
+        print(f"forward error: {forward_error} \t\t coef: {self.movement_coef}")
+        self.update_parameters(forward_error, current_location, last_loc)
+        if self.confidence_controller_forward.to_update():
+            self.update_directions()
+            # t = threading.Thread(target=self.update_directions)
+            # t.start()
+            time.sleep(0.1)
 
 
 if __name__ == "__main__":
     manager = MazeManager()
     manager.init_capture()
     time.sleep(0.5)
+    manager.cam.save_image("saved.jpg")
     manager.load_env()
     manager.start_server(blocking=True)

@@ -61,6 +61,7 @@ class DirectionsServer:
                 logging.error(f"Server startup error: {repr(e)}")
 
             while True:
+                logging.debug(f"Server Listening")
                 conn, addr = s.accept()
                 with conn:
                     logging.debug(f"Connected by {addr}")
@@ -93,6 +94,7 @@ class DirectionsServer:
                                                       )
                             # send data to bot and log to console
                             conn.sendall(msg)
+                            print(next_direction)
                             logging.debug(f"sent direction: {Config.directions_map[next_direction[0]]}"
                                           f" ,{next_direction[1]}")
                             data = conn.recv(1024)
