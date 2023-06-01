@@ -12,11 +12,13 @@ class Config:
     learning_rate = 0.001
     lower_confidence_thresh = 0.8
     error_update_thresh = 0.05  # 0 - 1
+    interval_size = 100
+    right_angle = 680
 
     # PID params
-    iv = 0.4
-    pv = 1.5
-    dv = 0
+    kp = 1
+    ki = 1
+    kd = 1
 
     # bot
     right = 1

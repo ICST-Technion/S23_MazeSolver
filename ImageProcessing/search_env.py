@@ -131,6 +131,16 @@ class MazeSearchEnv(object):
             path.append((curr_row, curr_col))
         return path
 
+    def actions_to_cords_with_weight(self, actions):
+        path = []
+        curr_row, curr_col = self.get_initial_state().get_value()
+        path.append((curr_row, curr_col))
+        for action, weight in actions:
+            curr_row = curr_row + weight*self.actions[action][0]
+            curr_col = curr_col + weight*self.actions[action][1]
+            path.append((curr_row, curr_col))
+        return path
+
     def color_maze_path_and_print(self, actions, color=122):
         maze_copy = self.data.data.copy()
         curr_row, curr_col = self.get_initial_state().get_value()

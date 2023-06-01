@@ -1,6 +1,8 @@
 import cv2
 import sys
 
+import numpy as np
+
 from Camera.camera import Camera
 from config import Config
 from ImageProcessing.preprocess_maze import MazeImage
@@ -12,28 +14,37 @@ import time
 import threading
 from distance_calibration.confidence_based import PIDController, ConfidenceCalibrator
 import math
+from Robot.robot import Robot
 
 def dist(c1, c2):
     return math.sqrt((c1[0] - c2[0]) ** 2 +
               (c1[1] - c2[1]) ** 2)
 
 
+def size(a):
+    return np.sqrt(a[0]**2 + a[1]**2)
+
+
+def get_height_point_to_line(a, b, p):
+    return np.dot(np.array([b[0] - a[0], b[1] - a[1]]), np.array(b[0] - p[0], b[1]-p[1]))/(dist(a, b)*dist(b, p))
+
+
 class MazeManager(object):
     def __init__(self):
+        self.last_action = "UP"
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
         self.cam = Camera(frame_rate=Config.frame_rate, camera_resolution=Config.camera_resolution)
         self._mi = MazeImage(Config.aruco_dict)
         self.agent = None
         self.maze_env = None
-        self.pid_controller_f = PIDController(Config.pv, Config.iv, Config.dv)
-        self.pid_controller_s = PIDController(Config.pv, Config.iv, Config.dv)
-        self.confidence_controller_forward = ConfidenceCalibrator(self.pid_controller_f)
+        self.robot = Robot(Config.kp, Config.ki, Config.kd)
+        self.confidence_model = ConfidenceCalibrator(Config.lower_confidence_thresh)
         self.movement_coef = 1
         self.server = DirectionsServer(Config.host, Config.port, self)
+        self.last_interval = 0
         self.directions = []
-        self.last_movement = 0
-        self.last_action = 'UP'
-
+        self.cords = []
+        self.last_turn = (0, 0)
 
     def load_env(self):
         # loads maze without aruco
@@ -63,15 +74,9 @@ class MazeManager(object):
     def get_last_coords(self):
         return self.maze_env.get_current_coords()
 
-    def update_parameters(self, forward_error, current, last):
-        print("trying calibrate")
-        print(last, current)
-        # vehicle moved
+    def update_parameters(self, expected, actual, current, last):
         if dist(last, current) > Config.moved_sensitivity:
-            print("calibrating")
-            forward_pid = self.confidence_controller_forward.calibrate(forward_error)
-            print(f"pid: {forward_pid}")
-            self.movement_coef += Config.learning_rate * forward_pid
+            self.movement_coef = expected/actual
 
     def init_capture(self):
         self.cam.start_live_capture()
@@ -93,7 +98,10 @@ class MazeManager(object):
         self.agent.heuristic = ContextHeuristic(cords)
         print("got cost: ", cost)
         logging.debug(f"found path: {cost != -1}")
-        return self.process_actions(actions)
+        smoothed_actions = self.process_actions(actions)
+        self.cords = self.maze_env.actions_to_cords_with_weight(smoothed_actions)
+        self.last_turn = self.cords.pop(0)
+        return smoothed_actions
 
     def get_car_angle(self):
         return self.maze_env.get_car_angle()
@@ -118,85 +126,66 @@ class MazeManager(object):
                 counter += 1
         return new_actions
 
-    def get_next_direction2(self):
-        action = self.directions[0][0]
-        if action == self.last_action:
-            direction = self.directions[0] # self.directions.pop(0)
-            self.last_movement = int(direction[1])
-            self.last_action = direction[0]
-            print(f"Sending: {Config.actions_to_num['UP'], int(self.movement_coef*int(direction[1]))}")
-            return Config.actions_to_num["UP"], int(self.movement_coef*int(direction[1]))
-        else:
-            direction = self.directions[0]
-            if self.last_action == "UP":
-                if direction[0] == "RIGHT":
-                    self.last_action = "RIGHT"
-                    return Config.actions_to_num["RIGHT"],  680
-                if direction[0] == "LEFT":
-                    self.last_action = "LEFT"
-                    return Config.actions_to_num["LEFT"], 680
-
-            if self.last_action == "RIGHT":
-                if direction[0] == "UP":
-                    self.last_action = "UP"
-                    return Config.actions_to_num["LEFT"],  680
-                if direction[0] == "DOWN":
-                    self.last_action = "DOWN"
-                    return Config.actions_to_num["RIGHT"],  680
-
-            if self.last_action == "LEFT":
-                if direction[0] == "UP":
-                    self.last_action = "UP"
-                    return Config.actions_to_num["RIGHT"],  680
-                if direction[0] == "DOWN":
-                    self.last_action = "DOWN"
-                    return Config.actions_to_num["LEFT"],  680
-
-            if self.last_action == "DOWN":
-                if direction[0] == "RIGHT":
-                    self.last_action = "RIGHT"
-                    return Config.actions_to_num["LEFT"],  680
-                if direction[0] == "LEFT":
-                    self.last_action = "LEFT"
-                    return Config.actions_to_num["RIGHT"],  680
-
-
     def get_next_direction(self):
         action = self.directions[0][0]
-        angle = self.get_car_angle()
-        if (abs(angle - Config.angle_map[action])) > Config.rotation_sensitivity:
-            diff = angle - Config.angle_map[action]
-            rotate_dir = "LEFT" if diff < 0 else "RIGHT"
-            if abs(diff) > 180:
-                if rotate_dir == "LEFT":
-                    rotate_dir = "RIGHT"
-                    diff = 360 - abs(diff)
-                else:
-                    rotate_dir = "LEFT"
-                    diff = 360 - abs(diff)
-            return Config.actions_to_num[rotate_dir], int(abs(diff))
-        direction = self.directions.pop(0)
-        self.last_movement = int(direction[1])
-        return Config.actions_to_num["UP"],  self.movement_coef*int(direction[1])
+        amount = min(self.directions[0][1], Config.interval_size)
+
+        if action == self.last_action:
+            self.last_interval = amount
+            temp = (action, self.directions[0][1] - amount)
+            self.directions[0] = temp
+            if self.directions[0][1] <= 0:
+                self.directions.pop(0)
+            return Config.actions_to_num["UP"], int(self.movement_coef * amount)
+        else:
+            if self.last_action == "UP":
+                if action == "RIGHT":
+                    self.last_action = "RIGHT"
+                    return Config.actions_to_num["RIGHT"], Config.right_angle
+                if action == "LEFT":
+                    self.last_action = "LEFT"
+                    return Config.actions_to_num["LEFT"], Config.right_angle
+
+            if self.last_action == "RIGHT":
+                if action == "UP":
+                    self.last_action = "UP"
+                    return Config.actions_to_num["LEFT"], Config.right_angle
+                if action == "DOWN":
+                    self.last_action = "DOWN"
+                    return Config.actions_to_num["RIGHT"], Config.right_angle
+
+            if self.last_action == "LEFT":
+                if action == "UP":
+                    self.last_action = "UP"
+                    return Config.actions_to_num["RIGHT"], Config.right_angle
+                if action == "DOWN":
+                    self.last_action = "DOWN"
+                    return Config.actions_to_num["LEFT"], Config.right_angle
+
+            if self.last_action == "DOWN":
+                if action == "RIGHT":
+                    self.last_action = "RIGHT"
+                    return Config.actions_to_num["LEFT"], Config.right_angle
+                if action == "LEFT":
+                    self.last_action = "LEFT"
+                    return Config.actions_to_num["RIGHT"], Config.right_angle
 
     def update_step(self):
         last_loc = self.get_last_coords()
         current_location = self.get_current_coords()
-        # if moved and not updating currently
-        # if dist(last_loc, current_location) > Config.moved_sensitivity and not self.server.lock.locked():
-        num_expected = self.last_movement
+
+        # update sideways position
+        err = get_height_point_to_line(self.last_turn, self.cords[0], current_location)
+        self.robot.calc_speeds(err)
+
+        # update forward coefficient and update directions if was off
+        num_expected = self.last_interval
         num_traveled = dist(last_loc, current_location)
-        new_tup = (self.directions[0][0], self.directions[0][1] - num_traveled)
-        if self.directions[0][1] <= 0:
-            self.directions.pop(0)
-        self.directions[0] = new_tup
-        forward_error = num_expected - num_traveled
-        print(f"forward error: {forward_error} \t\t coef: {self.movement_coef}")
-        self.update_parameters(forward_error, current_location, last_loc)
-        if self.confidence_controller_forward.to_update():
+
+        self.confidence_model.update(num_expected, num_traveled)
+        if self.confidence_model.to_update():
+            self.update_parameters(num_expected, num_traveled, current_location, last_loc)
             self.update_directions()
-            # t = threading.Thread(target=self.update_directions)
-            # t.start()
             time.sleep(0.1)
 
 

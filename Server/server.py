@@ -84,7 +84,7 @@ class DirectionsServer:
                                     logging.debug("updating in progress")
                                     next_direction = (Config.stay, 0)
                                 else:  # get next direction
-                                    next_direction = self.maze.get_next_direction2()
+                                    next_direction = self.maze.get_next_direction()
 
                             msg = self.create_message(Config.opcodes['DIRECTION_MSG'],
                                                       Config.dev_codes['RPI'],
