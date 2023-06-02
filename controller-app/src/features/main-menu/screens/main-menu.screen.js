@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect } from "react";
 import { View, Image } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import styled from "styled-components/native";
@@ -11,6 +11,7 @@ import {
   sendStart,
   sendStop,
   sendReset,
+  sendTakePic,
 } from "../../../services/udp-controls/udp-controls.service";
 import { UDPContext } from "../../../services/udp-controls/udp-controls.context";
 
@@ -50,8 +51,15 @@ const ButtonsContainer = styled.View`
 `;
 
 export const MainMenu = ({ navigation }) => {
-  const { socket } = useContext(UDPContext);
-
+  const { socket, updateStatus } = useContext(UDPContext);
+  useEffect(() => {
+    if (socket !== null) {
+      const interval = setInterval(() => {
+        updateStatus();
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [socket]);
   return (
     <ScreenContainer>
       <SafeArea>
@@ -87,16 +95,28 @@ export const MainMenu = ({ navigation }) => {
                 Stop
               </Button>
             </Spacer>
+            <Spacer position={"bottom"} size={"large"}>
+              <Button
+                icon="replay"
+                mode="contained"
+                color="black"
+                onPress={() => {
+                  sendReset(socket);
+                }}
+              >
+                Restart
+              </Button>
+            </Spacer>
 
             <Button
-              icon="replay"
+              icon="camera"
               mode="contained"
               color="black"
               onPress={() => {
-                sendReset(socket);
+                sendTakePic(socket);
               }}
             >
-              Restart
+              Take Maze Image
             </Button>
           </ButtonsContainer>
         </FunctionalContainer>

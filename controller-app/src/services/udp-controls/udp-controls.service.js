@@ -1,8 +1,6 @@
 import React, { useEffect } from "react";
 import { View, Text } from "react-native";
 
-SERVER_ADDRESS = "ws://192.168.1.101:8080";
-
 export const sendStart = (socket) => {
   if (socket) {
     socket.send("start");
@@ -20,12 +18,17 @@ export const sendReset = (socket) => {
     socket.send("reset");
   }
 };
+export const sendTakePic = (socket) => {
+  if (socket) {
+    socket.send("pic");
+  }
+};
 
-export const connectToWebSocket = async (ip, port) => {
+export const connectToWebSocket = async (ip, port, setStatus, setImage) => {
   return new Promise((resolve, reject) => {
     const serverAddress = `ws://${ip}:${port}`;
     const socket = new WebSocket(serverAddress);
-
+    console.log(serverAddress);
     socket.onopen = () => {
       // Connection is successfully established
       resolve(socket);
@@ -35,5 +38,19 @@ export const connectToWebSocket = async (ip, port) => {
       // Connection error occurred
       reject(error);
     };
+    socket.onmessage = (e) => {
+      message = JSON.parse(e.data);
+      if (message.type == "status") {
+        setStatus(message.status);
+      } else if (message.type == "maze") {
+        setImage("data:image/jpeg;base64," + message.maze);
+      }
+    };
   });
+};
+
+export const requestStatus = (socket) => {
+  if (socket) {
+    socket.send("status");
+  }
 };
