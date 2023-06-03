@@ -37,11 +37,11 @@ class Robot(object):
 
         if steering > 0:
             right_speed = 200
-            left_speed = steering / (self.wheelbase / (2 * self.wheel_radius)) + right_speed
+            left_speed = min(steering / (self.wheelbase / (2 * self.wheel_radius)) + right_speed, 255)
 
         else:
             left_speed = 200
-            right_speed = left_speed - steering/(self.wheelbase / (2 * self.wheel_radius))
+            right_speed = min(left_speed - steering/(self.wheelbase / (2 * self.wheel_radius)), 255)
 
         return left_speed, right_speed
 

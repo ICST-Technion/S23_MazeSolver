@@ -12,7 +12,7 @@ from Server.server import DirectionsServer, ControlServer
 import logging
 import time
 import threading
-from distance_calibration.confidence_based import PIDController, ConfidenceCalibrator
+from distance_calibration.confidence_based import ConfidenceCalibrator
 import math
 from Robot.robot import Robot
 
