@@ -67,6 +67,8 @@ class MazeSearchEnv(object):
         self.__final_state = MazeState(end_row, end_col)
         self.__cost = 1
 
+    def get_image(self):
+        return self.__data_obj.data
 
     def get_car_angle(self):
         return self.__data_obj.get_car_angle()
@@ -74,9 +76,12 @@ class MazeSearchEnv(object):
     def load_image(self, path):
         self.__data_obj.load_aruco_image(path)
 
+    def load_initial_image(self, img):
+        self.__data_obj.load_initial_image(img)
+
+
     def get_cost(self, state, action):
         return self.costs[action]
-        return self.__cost
 
     def is_final_state(self, state):
         return state == self.__final_state

@@ -5,9 +5,10 @@ import logging
 import asyncio
 import websockets
 import math
-
+import cv2
 from config import Config
-
+import base64
+import json
 
 def dist(c1, c2):
     return math.sqrt((c1[0] - c2[0]) ** 2 +
@@ -55,10 +56,8 @@ class DirectionsServer:
         return msg
 
     def start_server(self):
-        server_thread = threading.Thread(target=self.run_server)
-        server_thread.start()
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(5000)
+            # s.settimeout(5000)
             # start up server
             try:
                 s.bind((self.ip, self.port))
@@ -80,7 +79,7 @@ class DirectionsServer:
                             continue
 
                         if parsed_message['opcode'] == Config.opcodes['DIRECTION_REQUEST']:
-                            if self.stopped:
+                            if self.maze.is_stopped():
                                 logging.debug("server stopped")
                                 next_direction = (Config.stay, 0, 0, 0)
                             else:
@@ -110,21 +109,46 @@ class DirectionsServer:
                             if parsed_message['opcode'] == Config.opcodes['ESP32_ACK']:
                                 logging.debug(f"Received ACK")
 
+
+class ControlServer:
+    def __init__(self, ip, port, maze):
+        self.ip = ip
+        self.port = port
+        self.maze = maze
+        logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
+        logging.info("started new websocket server instance")
+
+    def start_server(self):
+        self.run_server()
+
     async def handle_client(self, websocket, path):
-        # Handle incoming messages from the client
         async for message in websocket:
             print(f"Received message: {message}")
             if message == "start":
-                self.stopped = False
+                self.maze.start_solver()
+                # if started send app current image using
+                success, binary_data = cv2.imencode('.jpg', self.maze.get_image())
+                base64_data = base64.b64encode(binary_data).decode('utf-8')
+                status = {"type": "maze", "maze": base64_data}
+                await websocket.send(json.dumps(status))
+
             if message == "stop":
-                self.stopped = True
+                self.maze.stop_solver()
             if message == "reset":
-                self.request_counter = 0
                 self.maze.update_directions()
 
+            if message == "pic":
+                self.maze.reload_initial_image()
+                success, binary_data = cv2.imencode('.jpg', self.maze.get_image())
+                base64_data = base64.b64encode(binary_data).decode('utf-8')
+                status = {"type": "maze", "maze": base64_data}
+                await websocket.send(json.dumps(status))
+
+            if message == "status":
+                await websocket.send(json.dumps(self.maze.get_status()))
 
     async def start_webserver(self):
-        async with websockets.serve(self.handle_client, Config.host, Config.webserver_port):
+        async with websockets.serve(self.handle_client, self.ip, self.port):
             print("WebSocket server started")
             await asyncio.Future()  # Run indefinitely
 
@@ -132,6 +156,7 @@ class DirectionsServer:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(self.start_webserver())
+
 
 if __name__ == "__main__":
     pass

@@ -8,7 +8,7 @@ from config import Config
 from ImageProcessing.preprocess_maze import MazeImage
 from ImageProcessing.search_env import MazeSearchEnv
 from ImageProcessing.search_agents import Heuristic1, WeightedAStarAgent, ContextHeuristic
-from Server.server import DirectionsServer
+from Server.server import DirectionsServer, ControlServer
 import logging
 import time
 import threading
@@ -37,19 +37,50 @@ class MazeManager(object):
         self._mi = MazeImage(Config.aruco_dict)
         self.agent = None
         self.maze_env = None
+        self.stopped = True
         self.robot = Robot(Config.kp, Config.ki, Config.kd)
         self.confidence_model = ConfidenceCalibrator(Config.lower_confidence_thresh)
         self.movement_coef = 1
         self.server = DirectionsServer(Config.host, Config.port, self)
+        self.control_server = ControlServer(Config.host, Config.port, self)
         self.last_interval = 0
         self.directions = []
         self.cords = []
         self.last_turn = (0, 0)
+        self.status = {
+            "connection": True,
+            "path_found": False,
+            "running": False,
+            "calculating_path": False,}
+
+    def get_status(self):
+        return self.status
+
+    def get_image(self):
+        return self.maze_env.get_image()
+
+    def is_stopped(self):
+        return self.stopped
+
+    def stop_solver(self):
+        self.stopped = True
+        self.status['running'] = False
+
+    def start_solver(self):
+        self.stopped = False
+        self.status['running'] = True
+
+    def reload_initial_image(self):
+        self.stopped = True
+        self.maze_env.load_initial_image(self.cam.retrieve_image())
 
     def load_env(self):
+        self.stopped = True
         # loads maze without aruco
         self._mi.load_initial_image(self.cam.retrieve_image())
-        input("press enter to continue")
+        # waits for user to start
+        while self.stopped:
+            time.sleep(1)
         # loads maze with aruco
         self._mi.load_aruco_image(self.cam.retrieve_image())
         self.maze_env = MazeSearchEnv(self._mi)
@@ -58,9 +89,11 @@ class MazeManager(object):
 
     def update_directions(self):
         self.server.updating_started()
+        self.status['calculating_path'] = True
         self.reload_image()
         self.directions = self.get_directions()
         print(self.directions)
+        self.status['calculating_path'] = False
         self.server.finished_updating()
 
     def reload_image(self):
@@ -91,17 +124,29 @@ class MazeManager(object):
             t = threading.Thread(target=self.server.start_server)
             t.start()
 
+    def start_control_server(self, blocking=False):
+        if blocking:
+            self.server.start_server()
+        else:
+            t = threading.Thread(target=self.control_server.start_server)
+            t.start()
+
     def get_directions(self):
         actions, cost, expanded = self.agent.run_search()
         cords = self.maze_env.actions_to_cords(actions)
         # added to improve A star times
         self.agent.heuristic = ContextHeuristic(cords)
-        print("got cost: ", cost)
-        logging.debug(f"found path: {cost != -1}")
-        smoothed_actions = self.process_actions(actions)
-        self.cords = self.maze_env.actions_to_cords_with_weight(smoothed_actions)
-        self.last_turn = self.cords.pop(0)
-        return smoothed_actions
+        if cost == -1:
+            self.status['path_found'] = False
+            return []
+        else:
+            self.status['path_found'] = True
+            print("got cost: ", cost)
+            logging.debug(f"found path: {cost != -1}")
+            smoothed_actions = self.process_actions(actions)
+            self.cords = self.maze_env.actions_to_cords_with_weight(smoothed_actions)
+            self.last_turn = self.cords.pop(0)
+            return smoothed_actions
 
     def get_car_angle(self):
         return self.maze_env.get_car_angle()
@@ -127,6 +172,8 @@ class MazeManager(object):
         return new_actions
 
     def get_next_direction(self):
+        if not self.directions:
+            return Config.actions_to_num["STAY"], 0, 0, 0
         action = self.directions[0][0]
         amount = min(self.directions[0][1], Config.interval_size)
 
@@ -172,22 +219,24 @@ class MazeManager(object):
                     return Config.actions_to_num["RIGHT"], 0, 0,  Config.right_angle
 
     def update_step(self):
-        last_loc = self.get_last_coords()
-        current_location = self.get_current_coords()
+        # if we have directions left
+        if self.directions:
+            last_loc = self.get_last_coords()
+            current_location = self.get_current_coords()
 
-        # update sideways position
-        err = get_height_point_to_line(self.last_turn, self.cords[0], current_location)
-        self.robot.calc_speeds(err)
+            # update sideways position
+            err = get_height_point_to_line(self.last_turn, self.cords[0], current_location)
+            self.robot.calc_speeds(err)
 
-        # update forward coefficient and update directions if was off
-        num_expected = self.last_interval
-        num_traveled = dist(last_loc, current_location)
+            # update forward coefficient and update directions if was off
+            num_expected = self.last_interval
+            num_traveled = dist(last_loc, current_location)
 
-        self.confidence_model.update(num_expected, num_traveled)
-        if self.confidence_model.to_update():
-            self.update_parameters(num_expected, num_traveled, current_location, last_loc)
-            self.update_directions()
-            time.sleep(0.1)
+            self.confidence_model.update(num_expected, num_traveled)
+            if self.confidence_model.to_update():
+                self.update_parameters(num_expected, num_traveled, current_location, last_loc)
+                self.update_directions()
+                time.sleep(0.1)
 
 
 if __name__ == "__main__":
@@ -196,4 +245,5 @@ if __name__ == "__main__":
     time.sleep(0.5)
     manager.cam.save_image("saved.jpg")
     manager.load_env()
+    manager.start_control_server(blocking=False)
     manager.start_server(blocking=True)
