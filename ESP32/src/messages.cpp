@@ -49,3 +49,19 @@ int readMessage(MSG *directionMsg, WiFiClient *client)
     }
     return SUCCESS;
 }
+
+int waitForClient(WiFiClient *client){
+int check_connection_counter = 0;
+    while (client->available() <= 0)
+    {
+      delay(200);
+      check_connection_counter++;
+      if (check_connection_counter > MAX_TEMPS_BEFORE_BREAK)
+      {
+        return ERROR;
+      }
+    }
+
+    return SUCCESS;
+
+}

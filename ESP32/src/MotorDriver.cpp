@@ -10,7 +10,7 @@ using namespace std;
 vector<double> rightSpeedVec = {1, 2, 3, 4, 5};
 vector<double> leftSpeedVec = {5, 4, 3, 2, 1};
 
-void LineFollowerForward(int time_angle);
+void LineFollowerForward(MSG msg);
 void processCarMovement(MSG directionMSG);
 void processEasyCarMovement(unsigned char direction, int speedMotorA, int speedMotorB, int timeDelay);
 void newForward(MSG forward_msg);
@@ -23,7 +23,7 @@ void newForward(MSG forward_msg)
     }
 
     Serial.println("FORWARD");
-    digitalWrite(LED1, HIGH);
+    // digitalWrite(LED1, HIGH);
 
     //  this is the motor - A
     digitalWrite(IN1, HIGH);
@@ -34,21 +34,24 @@ void newForward(MSG forward_msg)
     digitalWrite(IN3, LOW);
     digitalWrite(IN4, HIGH);
     analogWrite(PWMB, forward_msg.speed_left_wheel);
+
+    delay(forward_msg.time_angle);
     Serial.println(forward_msg.speed_right_wheel);
     Serial.println(forward_msg.speed_right_wheel);
 }
 
 void processCarMovement(MSG directionMSG)
 {
+    uint16_t lfc;
     switch (directionMSG.direction)
     {
     case FORWARD:
         Serial.println("FORWARD");
-        digitalWrite(LED1, HIGH);
-        LineFollowerForward(directionMSG.time_angle);
-        newForward(directionMSG);
         // digitalWrite(LED1, HIGH);
-        //  stop the car
+        LineFollowerForward(directionMSG);
+        // newForward(directionMSG);
+        //   digitalWrite(LED1, HIGH);
+        //    stop the car
         directionMSG.direction = STOP;
         processCarMovement(directionMSG);
         break;
@@ -62,7 +65,7 @@ void processCarMovement(MSG directionMSG)
         digitalWrite(IN3, HIGH);
         digitalWrite(IN4, LOW);
 
-        delay(directionMSG.time_angle * 10);
+        delay(directionMSG.time_angle);
         directionMSG.direction = STOP;
         processCarMovement(directionMSG);
         break;
@@ -77,9 +80,18 @@ void processCarMovement(MSG directionMSG)
         //  // this is the motor - B
         digitalWrite(IN3, HIGH);
         digitalWrite(IN4, LOW);
-        analogWrite(PWMB, 255);
-        analogWrite(PWMA, 255);
-        delay(680);
+        analogWrite(PWMB, 180);
+        analogWrite(PWMA, 180);
+        // do half left turn
+        delay(600);
+
+        lfc = digitalRead(LF_C);
+        do
+        {
+            lfc = digitalRead(LF_C);
+            delay(40);
+        } while (lfc == 1);
+
         directionMSG.direction = STOP;
         processCarMovement(directionMSG);
 
@@ -94,11 +106,19 @@ void processCarMovement(MSG directionMSG)
         //  // this is the motor - B
         digitalWrite(IN3, LOW);
         digitalWrite(IN4, HIGH);
-        analogWrite(PWMB, 255);
-        analogWrite(PWMA, 255);
+        analogWrite(PWMB, 180);
+        analogWrite(PWMA, 180);
         // analogWrite(PWMA, 255);
         // analogWrite(PWMB, 0);
-        delay(680);
+        delay(600);
+
+        lfc = digitalRead(LF_C);
+        do
+        {
+            lfc = digitalRead(LF_C);
+            delay(40);
+        } while (lfc == 1);
+
         directionMSG.direction = STOP;
         processCarMovement(directionMSG);
         break;
@@ -142,7 +162,7 @@ void processEasyCarMovement(unsigned char direction, int speedMotorA, int speedM
 
         delay(timeDelay);
 
-        processEasyCarMovement(STOP, 0, 0, 0);
+        // processEasyCarMovement(STOP, 0, 0, 0);
         break;
     case BACKWARD:
         Serial.println("BACKWARD");
@@ -155,7 +175,7 @@ void processEasyCarMovement(unsigned char direction, int speedMotorA, int speedM
         digitalWrite(IN4, LOW);
 
         delay(700);
-        processEasyCarMovement(STOP, 0, 0, 0);
+        // processEasyCarMovement(STOP, 0, 0, 0);
         break;
 
     case LEFT:
@@ -201,57 +221,61 @@ void processEasyCarMovement(unsigned char direction, int speedMotorA, int speedM
         break;
 
     default:
-        delay(700);
+        delay(100);
 
         break;
     }
 }
 
-void LineFollowerForward(int time_angle)
+void LineFollowerForward(MSG msg)
 {
     // default values for speed.
     // changes if the line follower get indication to deviation.
-    double speedLeft = 200;
-    double speedRight = 200;
-    while (time_angle > 0)
+    int time_angle = msg.time_angle;
+
+    analogWrite(PWMA, msg.speed_right_wheel);
+    analogWrite(PWMB, msg.speed_left_wheel);
+
+    //  this is the motor - A
+    digitalWrite(IN1, HIGH);
+    digitalWrite(IN2, LOW);
+
+    // // this is the motor - B
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, HIGH);
+
+    int64_t endTime = (int64_t)esp_timer_get_time() / 1000 + msg.time_angle;
+    while ((endTime - (int64_t)esp_timer_get_time() / 1000) > 0)
     {
+        // Serial.println("FORWARD");
+
+        // Serial.print("delay = ");
+        // Serial.println(min(time_angle, 50));
+        // delayMicroseconds(1000 * min(time_angle, 50));
+        // delay(min(time_angle, 50));
+        // time_angle -= min(time_angle, 50);
+
         uint16_t lfor = digitalRead(LFO_R);
         uint16_t lfir = digitalRead(LFI_R);
         uint16_t lfc = digitalRead(LF_C);
         uint16_t lfil = digitalRead(LFI_L);
         uint16_t lfol = digitalRead(LFO_L);
 
-        if ((lfol + lfil + lfc + lfir + lfor) > 2)
-        {
+        int sum = lfor + lfir + lfc + lfil + lfol;
+        Serial.print("sum = ");
+        Serial.println(sum);
 
-            speedLeft = lfol * leftSpeedVec[0] + lfil * leftSpeedVec[1] + lfc * leftSpeedVec[2] + lfir * leftSpeedVec[3] + lfor * leftSpeedVec[4];
-            speedRight = lfol * rightSpeedVec[0] + lfil * rightSpeedVec[1] + lfc * rightSpeedVec[2] + lfir * rightSpeedVec[3] + lfor * rightSpeedVec[4];
-
-            speedLeft = speedLeft * 255 / 15;
-            speedRight = speedRight * 255 / 15;
-        }
-
-        // Serial.println("FORWARD");
-        //  this is the motor - A
-        digitalWrite(IN1, HIGH);
-        digitalWrite(IN2, LOW);
-        analogWrite(PWMA, speedRight);
-
-        // // this is the motor - B
-        digitalWrite(IN3, LOW);
-        digitalWrite(IN4, HIGH);
-        analogWrite(PWMB, speedLeft);
-        Serial.println(speedLeft);
-        Serial.println(speedRight);
-        delay(35);
-        time_angle -= 10;
+        // if (sum == 5)
+        // {
+        //     break;
+        // }
     }
 }
 
 void setupPinCarModes()
 {
-    pinMode(LED1, OUTPUT);
-    // set the ENABLES pins to output type
+    // pinMode(LED1, OUTPUT);
+    //  set the ENABLES pins to output type
     pinMode(PWMA, OUTPUT);
     pinMode(PWMB, OUTPUT);
     // set the motor driver pins to output type

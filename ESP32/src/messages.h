@@ -34,8 +34,8 @@ typedef struct msg
     unsigned char src_device;
     unsigned char dst_device;
     unsigned char direction;
-    int speed_right_wheel;
     int speed_left_wheel;
+    int speed_right_wheel;
     int time_angle;
 } MSG;
 
@@ -44,5 +44,7 @@ void requestDirection(WiFiClient *client);
 void buildAndSendAckMsg(WiFiClient *client, MSG direction_msg);
 
 int readMessage(MSG *directionMsg, WiFiClient *client);
+
+int waitForClient(WiFiClient *client);
 
 #endif

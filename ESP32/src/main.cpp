@@ -49,8 +49,11 @@ void setup()
   WiFi.mode(WIFI_STA);
 }
 
+void testWheels();
+
 void loop()
 {
+  // testWheels();
   switch (state)
   {
   case CONNECT_TO_WIFI:
@@ -78,15 +81,10 @@ void loop()
     delay(100);
     requestDirection(&client);
     uint8_t rxBuffer;
-    int check_connection_counter = 0;
-    while (client.available() <= 0)
+
+    if (waitForClient(&client) != SUCCESS)
     {
-      delay(200);
-      check_connection_counter++;
-      if (check_connection_counter > MAX_TEMPS_BEFORE_BREAK)
-      {
-        break;
-      }
+      break;
     }
 
     MSG directionMsg;
@@ -110,6 +108,33 @@ void loop()
   }
 
   state = checkConnectivity(client);
+}
 
-  delay(1000);
+void testWheels()
+{
+  MSG direction;
+
+  while (1)
+  {
+
+    direction.direction = FORWARD;
+    direction.speed_left_wheel = 207;
+    direction.speed_right_wheel = 200;
+    direction.time_angle = 182;
+    int delay_time = 1000;
+    processCarMovement(direction);
+    delay(delay_time);
+    // direction.direction = BACKWARD;
+    // processCarMovement(direction);
+    // delay(delay_time);
+    direction.direction = LEFT;
+    processCarMovement(direction);
+    delay(delay_time);
+    direction.direction = RIGHT;
+    processCarMovement(direction);
+    delay(delay_time);
+    direction.direction = STOP;
+    processCarMovement(direction);
+    delay(delay_time * 5);
+  }
 }
