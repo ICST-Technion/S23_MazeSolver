@@ -235,12 +235,16 @@ def get_rotation_to_straighten(image):
 def load_image_post_aruco(im, rotation, thresh_val=100):
     thresh, mask = threshold_image(im, min_val=thresh_val, rotation=rotation)
     skel = skeletonize_image(thresh).astype(np.uint8)
-    kernel = np.ones((3, 3), np.uint8)
-    dilation = cv2.dilate(skel, kernel, iterations=1)
-    warped, m = warp_image(dilation, mask)
+    # TODO: undo comments if doesnt work
+    # kernel = np.ones((3, 3), np.uint8)
+    # dilation = cv2.dilate(skel, kernel, iterations=1)
+    # check here
+    # dilation[dilation > 200] = 255
+    warped, m = warp_image(skel, mask)
     warped_original = warp_image_saved_matrix(im, m)
     cv2.imwrite('warped.jpg', warped_original)
     return warped, warped_original, m
+
 
 class ArucoData(object):
     def __init__(self, img, aruco_dict):
@@ -295,8 +299,8 @@ class MazeImage(object):
         data = warp_image_saved_matrix(img, self.warp_matrix)
         self.aruco = ArucoData(data, self.aruco_dict)
         self.data = np.copy(self.original_image)
-        fill_aruco(self.data, self.aruco.aruco_info[Config.CAR_ID]['corners'])
-        fill_aruco(self.data, self.aruco.aruco_info[Config.END_ID]['corners'])
+        # fill_aruco(self.data, self.aruco.aruco_info[Config.CAR_ID]['corners'])
+        # fill_aruco(self.data, self.aruco.aruco_info[Config.END_ID]['corners'])
         cv2.imwrite("arucoImage.jpg", self.data)
 
 
@@ -322,6 +326,20 @@ class MazeImage(object):
         return self.aruco.aruco_info[Config.END_ID]['centerY'], self.aruco.aruco_info[Config.END_ID]['centerX']
 
     def get_start_point(self):
+        curr_row, curr_col = self.get_current_point()
+        for i in range(max(self.data.shape)):
+            if curr_row + i < self.data.shape[0]:
+                if self.data[curr_row+i][curr_col] == MAZE_COLOR:
+                    return curr_row+i, curr_col
+            if curr_row - i >= 0:
+                if self.data[curr_row-i][curr_col] == MAZE_COLOR:
+                    return curr_row-i, curr_col
+            if curr_col + i < self.data.shape[1]:
+                if self.data[curr_row][curr_col+i] == MAZE_COLOR:
+                    return curr_row, curr_col+i
+            if curr_col - i >= 0:
+                if self.data[curr_row][curr_col-i] == MAZE_COLOR:
+                    return curr_row, curr_col-i
         return self.get_current_point()
 
     def get_current_point(self):
