@@ -40,7 +40,7 @@ class Camera:
             (self.cam.resolution[1], self.cam.resolution[0], 3)),
                                    cv2.COLOR_BGR2GRAY)
             self.picture_lock.release()
-            sleep(1 / self.frame_rate)
+            # sleep(1 / self.frame_rate)
 
     def save_image(self, name):
         cv2.imwrite(name, self._bgr_image.reshape(

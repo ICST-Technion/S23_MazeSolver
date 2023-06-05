@@ -12,8 +12,10 @@ class ConfidenceCalibrator:
         self.lower_confidence_thresh = lower_confidence_thresh
 
     def update(self, expected, travelled):
-
-        self.confidence = max(1 - abs(expected - travelled)/travelled, 0)
+        if travelled == 0:
+            self.confidence = max(1 - expected-travelled, 0)
+        else:
+            self.confidence = max(1 - abs(expected - travelled)/travelled, 0)
 
     def to_update(self, stochastic=False):
         if stochastic:

@@ -90,7 +90,7 @@ class DirectionsServer:
                                     next_direction = (Config.stay, 0, 0, 0)
                                 else:  # get next direction
                                     next_direction = self.maze.get_next_direction()
-
+                            print("next dir:", next_direction)
                             msg = self.create_message(Config.opcodes['DIRECTION_MSG'],
                                                       Config.dev_codes['RPI'],
                                                       Config.dev_codes['ESP_32'],
@@ -117,8 +117,11 @@ class ControlServer:
         self.maze = maze
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
         logging.info("started new websocket server instance")
+        print("started new websocket server instance")
+
 
     def start_server(self):
+        print("starting control server")
         self.run_server()
 
     async def handle_client(self, websocket, path):
@@ -138,14 +141,15 @@ class ControlServer:
                 self.maze.update_directions()
 
             if message == "pic":
-                self.maze.reload_initial_image()
+                # self.maze.reload_initial_image()
                 success, binary_data = cv2.imencode('.jpg', self.maze.get_image())
                 base64_data = base64.b64encode(binary_data).decode('utf-8')
                 status = {"type": "maze", "maze": base64_data}
                 await websocket.send(json.dumps(status))
 
             if message == "status":
-                await websocket.send(json.dumps(self.maze.get_status()))
+                status = {"type": "status", "status": self.maze.get_status()}
+                await websocket.send(json.dumps(status))
 
     async def start_webserver(self):
         async with websockets.serve(self.handle_client, self.ip, self.port):
