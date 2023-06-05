@@ -21,6 +21,15 @@ def dist(c1, c2):
               (c1[1] - c2[1]) ** 2)
 
 
+def calculate_cos_theta(point1, point2):
+    dot_product = point1[0] * point2[0] + point1[1] * point2[1]
+    magnitude1 = math.sqrt(point1[0] ** 2 + point1[1] ** 2)
+    magnitude2 = math.sqrt(point2[0] ** 2 + point2[1] ** 2)
+    cos_theta = dot_product / (magnitude1 * magnitude2)
+
+    return cos_theta
+
+
 def size(a):
     return np.sqrt(a[0]**2 + a[1]**2)
 
@@ -73,7 +82,7 @@ class MazeManager(object):
         self.agent = None
         self.maze_env = None
         self.stopped = True
-        self.robot = Robot(Config.kp, Config.ki, Config.kd)
+        self.robot = Robot(Config.kp, Config.ki, Config.kd, Config.a_kp, Config.a_ki, Config.a_kd)
         self.confidence_model = ConfidenceCalibrator(Config.lower_confidence_thresh)
         self.movement_coef = 10
         self.server = DirectionsServer(Config.host, Config.port, self)
@@ -82,6 +91,7 @@ class MazeManager(object):
         self.moved_forward = False
         self.directions = []
         self.cords = []
+        self.is_rotating = False
         self.last_turn = (0, 0)
         self.status = {
             "connection": True,
@@ -216,6 +226,26 @@ class MazeManager(object):
                 counter += 1
         return new_actions
 
+    def get_dynamic_next_direction(self):
+        if not self.directions:
+            print("ran out")
+            return Config.actions_to_num["STAY"], 0, 0, 0
+
+        if self.is_rotating:
+            err = calculate_cos_theta(self.maze_env.get_direction_vector(),  self.cords[0] - self.last_turn)
+            amount = self.robot.get_rotation_length(err)
+            if amount > 0:
+                return Config.actions_to_num["LEFT"], 255, 255, abs(int(amount))
+            if amount < 0:
+                return Config.actions_to_num["RIGHT"], 255, 255, abs(int(amount))
+            return Config.actions_to_num["STAY"], 0, 0, int(0)
+        else:
+            amount = min(self.directions[0][1], Config.interval_size)
+            self.moved_forward = True
+            self.last_interval = amount
+            speed_l, speed_r = self.robot.get_speeds()
+            return Config.actions_to_num["UP"], speed_l, speed_r, int(self.movement_coef * amount)
+
     def get_next_direction(self):
         print("last dir:", self.last_action)
         if not self.directions:
@@ -280,28 +310,44 @@ class MazeManager(object):
     def update_step(self):
         # if we have directions left
         if self.directions:
+            # gets current and last location and updates current location
             last_loc = self.get_last_coords()
             current_location = self.get_current_coords()
-
-            # update sideways position
-            err = distance_from_line(self.last_turn, self.cords[0], current_location)/5
-            print("error:", err)
-            self.robot.calc_speeds(err)
-
-            # update forward coefficient and update directions if was off
-            num_expected = self.last_interval
-            num_traveled = dist(last_loc, current_location)
-            if self.moved_forward:
-                temp = (self.directions[0][0], dist(self.cords[0], current_location))
-                self.directions[0] = temp
-                if self.directions[0][1] <= 0:
-                    self.directions.pop(0)
-                self.update_parameters(num_expected, num_traveled, current_location, last_loc)
-            # if num_expected > 0:
-            #     self.confidence_model.update(num_expected, num_traveled)
-            #     if self.confidence_model.to_update():
-            #         self.update_directions()
-            #         time.sleep(0.1)
+            # if rotating
+            if self.is_rotating:
+                err = calculate_cos_theta(self.maze_env.get_direction_vector(), self.cords[0] - self.last_turn)
+                # if we are off by less than sensitivity then stop rotation
+                if err < Config.rotation_sensitivity:
+                    self.is_rotating = False
+                    # starting forward movement so reset old errors
+                    self.robot.reset_dir_pid()
+            else:
+                # update sideways position
+                err = distance_from_line(self.last_turn, self.cords[0], current_location)/5
+                print("error:", err)
+                self.robot.calc_speeds(err)
+                # update forward coefficient and update directions if was off
+                num_expected = self.last_interval
+                num_traveled = dist(last_loc, current_location)
+                if self.moved_forward:
+                    # update the amount to move the amount left
+                    temp = (self.directions[0][0], dist(self.cords[0], current_location))
+                    self.directions[0] = temp
+                    # if we moved past or to the point we needed
+                    # TODO: consider checking if really negative then recalculate maze path
+                    if self.directions[0][1] <= 0:
+                        self.directions.pop(0)
+                        self.last_turn = self.cords.pop(0)
+                        # we finished moving in direction then start rotation
+                        self.is_rotating = True
+                        # just started rotating so reset old errors
+                        self.robot.reset_angle_pid()
+                    self.update_parameters(num_expected, num_traveled, current_location, last_loc)
+                # if num_expected > 0:
+                #     self.confidence_model.update(num_expected, num_traveled)
+                #     if self.confidence_model.to_update():
+                #         self.update_directions()
+                #         time.sleep(0.1)
         else:
             self.update_directions()
 

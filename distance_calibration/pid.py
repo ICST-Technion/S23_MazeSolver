@@ -7,6 +7,10 @@ class PIDController:
         self.last_error = 0  # Error from the previous iteration
         self.integral = 0  # Accumulated error
 
+    def reset(self):
+        self.last_error = 0
+        self.integral = 0
+
     def calculate(self, error, dt=1):
 
         # Calculate the proportional term

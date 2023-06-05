@@ -348,3 +348,7 @@ class MazeImage(object):
 
     def get_current_point(self):
         return self.aruco.aruco_info[Config.CAR_ID]['centerY'], self.aruco.aruco_info[Config.CAR_ID]['centerX']
+
+    def get_direction_vector(self):
+        marker_corners = self.aruco.aruco_info[Config.CAR_ID]['corners']
+        return marker_corners[0] - marker_corners[3]

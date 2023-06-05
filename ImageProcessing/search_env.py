@@ -94,6 +94,9 @@ class MazeSearchEnv(object):
         start_row, start_col = self.__data_obj.get_start_point()
         return MazeState(start_row, start_col)
 
+    def get_direction_vector(self):
+        return self.__data_obj.get_direction_vector()
+
     def get_current_coords(self):
         return self.__data_obj.get_current_point()
 
