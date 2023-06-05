@@ -66,7 +66,7 @@ def distance_from_line(line_point1, line_point2, point):
 
 class MazeManager(object):
     def __init__(self):
-        self.last_action = "UP"
+        self.last_action = "DOWN"
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
         self.cam = Camera(frame_rate=Config.frame_rate, camera_resolution=Config.camera_resolution)
         self._mi = MazeImage(Config.aruco_dict)
@@ -292,16 +292,16 @@ class MazeManager(object):
             num_expected = self.last_interval
             num_traveled = dist(last_loc, current_location)
             if self.moved_forward:
-                temp = (self.directions[0][0], self.directions[0][1] - num_traveled)
+                temp = (self.directions[0][0], dist(self.cords[0], current_location))
                 self.directions[0] = temp
                 if self.directions[0][1] <= 0:
                     self.directions.pop(0)
                 self.update_parameters(num_expected, num_traveled, current_location, last_loc)
-            if num_expected > 0:
-                self.confidence_model.update(num_expected, num_traveled)
-                if self.confidence_model.to_update():
-                    self.update_directions()
-                    time.sleep(0.1)
+            # if num_expected > 0:
+            #     self.confidence_model.update(num_expected, num_traveled)
+            #     if self.confidence_model.to_update():
+            #         self.update_directions()
+            #         time.sleep(0.1)
         else:
             self.update_directions()
 
@@ -311,6 +311,8 @@ if __name__ == "__main__":
     manager.init_capture()
     time.sleep(0.5)
     manager.cam.save_image("saved.jpg")
+
     manager.start_control_server(blocking=False)
     manager.load_env()
     manager.start_server(blocking=True)
+

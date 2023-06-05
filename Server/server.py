@@ -66,48 +66,51 @@ class DirectionsServer:
                 logging.error(f"Server startup error: {repr(e)}")
 
             while True:
-                logging.debug(f"Server Listening")
-                conn, addr = s.accept()
-                with conn:
-                    logging.debug(f"Connected by {addr}")
-                    while True:
-                        # receive data from bot
-                        data = conn.recv(1024)
-                        parsed_message = self.parse_message(data)
-
-                        if not data or parsed_message['opcode'] not in list(Config.opcodes.values()):
-                            continue
-
-                        if parsed_message['opcode'] == Config.opcodes['DIRECTION_REQUEST']:
-                            if self.maze.is_stopped():
-                                logging.debug("server stopped")
-                                next_direction = (Config.stay, 0, 0, 0)
-                            else:
-                                # recalculate coefficient and confidence from last movement
-                                self.maze.update_step()
-                                if self.lock.locked():
-                                    logging.debug("updating in progress")
-                                    next_direction = (Config.stay, 0, 0, 0)
-                                else:  # get next direction
-                                    next_direction = self.maze.get_next_direction()
-                            print("next dir:", next_direction)
-                            msg = self.create_message(Config.opcodes['DIRECTION_MSG'],
-                                                      Config.dev_codes['RPI'],
-                                                      Config.dev_codes['ESP_32'],
-                                                      next_direction[0],
-                                                      next_direction[1],
-                                                      next_direction[2],
-                                                      next_direction[3]
-                                                      )
-                            # send data to bot and log to console
-                            conn.sendall(msg)
-                            print(next_direction)
-                            logging.debug(f"sent direction: {Config.directions_map[next_direction[0]]}"
-                                          f" ,{next_direction[1]}, {next_direction[2], next_direction[3]}")
+                try:
+                    logging.debug(f"Server Listening")
+                    conn, addr = s.accept()
+                    with conn:
+                        logging.debug(f"Connected by {addr}")
+                        while True:
+                            # receive data from bot
                             data = conn.recv(1024)
                             parsed_message = self.parse_message(data)
-                            if parsed_message['opcode'] == Config.opcodes['ESP32_ACK']:
-                                logging.debug(f"Received ACK")
+
+                            if not data or parsed_message['opcode'] not in list(Config.opcodes.values()):
+                                continue
+
+                            if parsed_message['opcode'] == Config.opcodes['DIRECTION_REQUEST']:
+                                if self.maze.is_stopped():
+                                    logging.debug("server stopped")
+                                    next_direction = (Config.stay, 0, 0, 0)
+                                else:
+                                    # recalculate coefficient and confidence from last movement
+                                    self.maze.update_step()
+                                    if self.lock.locked():
+                                        logging.debug("updating in progress")
+                                        next_direction = (Config.stay, 0, 0, 0)
+                                    else:  # get next direction
+                                        next_direction = self.maze.get_next_direction()
+                                print("next dir:", next_direction)
+                                msg = self.create_message(Config.opcodes['DIRECTION_MSG'],
+                                                          Config.dev_codes['RPI'],
+                                                          Config.dev_codes['ESP_32'],
+                                                          next_direction[0],
+                                                          next_direction[1],
+                                                          next_direction[2],
+                                                          next_direction[3]
+                                                          )
+                                # send data to bot and log to console
+                                conn.sendall(msg)
+                                print(next_direction)
+                                logging.debug(f"sent direction: {Config.directions_map[next_direction[0]]}"
+                                              f" ,{next_direction[1]}, {next_direction[2], next_direction[3]}")
+                                data = conn.recv(1024)
+                                parsed_message = self.parse_message(data)
+                                if parsed_message['opcode'] == Config.opcodes['ESP32_ACK']:
+                                    logging.debug(f"Received ACK")
+                except:
+                    pass
 
 
 class ControlServer:
@@ -130,10 +133,10 @@ class ControlServer:
             if message == "start":
                 self.maze.start_solver()
                 # if started send app current image using
-                success, binary_data = cv2.imencode('.jpg', self.maze.get_image())
-                base64_data = base64.b64encode(binary_data).decode('utf-8')
-                status = {"type": "maze", "maze": base64_data}
-                await websocket.send(json.dumps(status))
+                # success, binary_data = cv2.imencode('.jpg', self.maze.get_image())
+                # base64_data = base64.b64encode(binary_data).decode('utf-8')
+                # status = {"type": "maze", "maze": base64_data}
+                # await websocket.send(json.dumps(status))
 
             if message == "stop":
                 self.maze.stop_solver()

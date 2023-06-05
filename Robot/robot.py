@@ -26,23 +26,23 @@ class Robot(object):
         print("pid", pid)
         self.l_speed, self.r_speed = self.pid_to_speeds(pid)
 
-    def pid_to_speeds(self, steering, max_steering_angle=45):
+    def pid_to_speeds(self, steering, max_steering_angle=55):
         """
         steering = front wheel steering angle, limited by max_steering_angle(max 90 degree)
         """
-        steering = steering * (180.0 / np.pi)
         if steering > max_steering_angle:
             steering = max_steering_angle
         if steering < -max_steering_angle:
             steering = -max_steering_angle
         print("steering: ", steering)
         if steering > 0:
-            right_speed = 200
-            left_speed = min(steering / (self.wheelbase / (2 * self.wheel_radius)) + right_speed, 255)
+            left_speed = 255
+            right_speed = min(left_speed - steering, 255)
 
         else:
-            left_speed = 200
-            right_speed = min(left_speed - steering/(self.wheelbase / (2 * self.wheel_radius)), 255)
+            right_speed = 255
+            left_speed = min(right_speed + steering, 255)
+
 
         return int(left_speed), int(right_speed)
 

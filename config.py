@@ -12,13 +12,13 @@ class Config:
     learning_rate = 0.001
     lower_confidence_thresh = 0.8
     error_update_thresh = 0.05  # 0 - 1
-    interval_size = 500
+    interval_size = 50
     right_angle = 680
 
     # PID params
-    kp = 1
-    ki = 1
-    kd = 1
+    kp = 3
+    ki = .1
+    kd = 3
 
     # bot
     right = 1
@@ -32,7 +32,7 @@ class Config:
                       "DIAG_UL": 5, "DIAG_UR": 5, "DIAG_DL": 5, "DIAG_DR": 5, "STAY": 5}
     angle_map = {"LEFT": 270, "UP": 0, "DOWN": 180, "RIGHT": 90}
     rotation_sensitivity = 4
-    min_actions_for_movement = 10
+    min_actions_for_movement = 5
 
     opcodes = {
         "DIRECTION_REQUEST": 1,
