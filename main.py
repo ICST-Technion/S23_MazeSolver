@@ -16,22 +16,28 @@ from distance_calibration.confidence_based import ConfidenceCalibrator
 import math
 from Robot.robot import Robot
 
+
 def dist(c1, c2):
     return math.sqrt((c1[0] - c2[0]) ** 2 +
-              (c1[1] - c2[1]) ** 2)
+                     (c1[1] - c2[1]) ** 2)
+
+
+def get_distance_left(current_loc, src, dst):
+    if src[0] == dst[0]:
+        return dist(current_loc, dst)
+    else:
+        return dst[0] - current_loc[0]
 
 
 def calculate_cos_theta(point1, point2):
-    dot_product = point1[0] * point2[0] + point1[1] * point2[1]
-    magnitude1 = math.sqrt(point1[0] ** 2 + point1[1] ** 2)
-    magnitude2 = math.sqrt(point2[0] ** 2 + point2[1] ** 2)
-    cos_theta = dot_product / (magnitude1 * magnitude2)
-
-    return cos_theta
+    angle_1 = 180*np.arctan2(point1[0], point1[1])/np.pi
+    angle_2 = 180*np.arctan2(point2[0], point2[1])/np.pi
+    print(f"a1: {angle_1} a2: {angle_2}")
+    return angle_1 - angle_2
 
 
 def size(a):
-    return np.sqrt(a[0]**2 + a[1]**2)
+    return np.sqrt(a[0] ** 2 + a[1] ** 2)
 
 
 def distance_from_line(line_point1, line_point2, point):
@@ -71,11 +77,9 @@ def distance_from_line(line_point1, line_point2, point):
     return distance
 
 
-
-
 class MazeManager(object):
     def __init__(self):
-        self.last_action = "DOWN"
+        self.last_action = "RIGHT"
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
         self.cam = Camera(frame_rate=Config.frame_rate, camera_resolution=Config.camera_resolution)
         self._mi = MazeImage(Config.aruco_dict)
@@ -92,12 +96,12 @@ class MazeManager(object):
         self.directions = []
         self.cords = []
         self.is_rotating = False
-        self.last_turn = (0, 0)
+        self.last_turn = [0, 0]
         self.status = {
             "connection": True,
             "path_found": False,
             "running": False,
-            "calculating_path": False,}
+            "calculating_path": False, }
 
     def get_status(self):
         return self.status
@@ -120,10 +124,14 @@ class MazeManager(object):
         self.stopped = True
         self.maze_env.load_initial_image(self.cam.retrieve_image())
 
-    def load_env(self):
+    def load_env(self, from_file=False):
         self.stopped = True
         # loads maze without aruco
-        self._mi.load_initial_image(self.cam.retrieve_image())
+        if from_file:
+            im = cv2.imread(Config.image_file, cv2.IMREAD_GRAYSCALE)
+        else:
+            im = self.cam.retrieve_image()
+        self._mi.load_initial_image(im)
         # waits for user to start
         while self.stopped:
             time.sleep(1)
@@ -162,8 +170,8 @@ class MazeManager(object):
 
     def update_parameters(self, expected, actual, current, last):
         if dist(last, current) > Config.moved_sensitivity:
-            print("updated coef:", expected/actual)
-            self.movement_coef = (expected/actual)*self.movement_coef
+            print("updated coef:", expected / actual)
+            self.movement_coef = (expected / actual) * self.movement_coef
 
     def init_capture(self):
         self.cam.start_live_capture()
@@ -199,6 +207,7 @@ class MazeManager(object):
             print("got cost: ", cost)
             logging.debug(f"found path: {cost != -1}")
             smoothed_actions = self.process_actions(actions)
+
             self.cords = self.maze_env.actions_to_cords_with_weight(smoothed_actions)
             self.last_turn = self.cords.pop(0)
             return smoothed_actions
@@ -232,122 +241,85 @@ class MazeManager(object):
             return Config.actions_to_num["STAY"], 0, 0, 0
 
         if self.is_rotating:
-            err = calculate_cos_theta(self.maze_env.get_direction_vector(),  self.cords[0] - self.last_turn)
+            print("got to rotate")
+            try:
+                rot_vec = (self.cords[0][0] - self.last_turn[0], self.cords[0][1]-self.last_turn[1])
+                err = calculate_cos_theta(rot_vec, self.maze_env.get_direction_vector())
+            except Exception as e:
+                print(e)
+            print(f"got rotate err: {err}")
             amount = self.robot.get_rotation_length(err)
+            print(f"rotating for: {amount}")
             if amount > 0:
                 return Config.actions_to_num["LEFT"], 255, 255, abs(int(amount))
             if amount < 0:
                 return Config.actions_to_num["RIGHT"], 255, 255, abs(int(amount))
             return Config.actions_to_num["STAY"], 0, 0, int(0)
         else:
-            amount = min(self.directions[0][1], Config.interval_size)
-            self.moved_forward = True
-            self.last_interval = amount
-            speed_l, speed_r = self.robot.get_speeds()
-            return Config.actions_to_num["UP"], speed_l, speed_r, int(self.movement_coef * amount)
-
-    def get_next_direction(self):
-        print("last dir:", self.last_action)
-        if not self.directions:
-            print("ran out")
-            return Config.actions_to_num["STAY"], 0, 0, 0
-        action = self.directions[0][0]
-        amount = min(self.directions[0][1], Config.interval_size)
-
-        if action == self.last_action:
-            self.moved_forward = True
-            self.last_interval = amount
-            speed_l, speed_r = self.robot.get_speeds()
-            return Config.actions_to_num["UP"], speed_l, speed_r, int(self.movement_coef * amount)
-        else:
-            self.moved_forward = False
-            if self.last_action == "UP":
-                if action == "RIGHT":
-                    self.last_action = "RIGHT"
-                    return Config.actions_to_num["RIGHT"], 0, 0, Config.right_angle
-                if action == "LEFT":
-                    self.last_action = "LEFT"
-                    return Config.actions_to_num["LEFT"], 0, 0, Config.right_angle
-                if action == "DOWN":
-                    self.last_action = "DOWN"
-                    return Config.actions_to_num["STAY"], 0, 0, Config.right_angle
-
-
-            if self.last_action == "RIGHT":
-                if action == "UP":
-                    self.last_action = "UP"
-                    return Config.actions_to_num["LEFT"], 0, 0, Config.right_angle
-                if action == "DOWN":
-                    self.last_action = "DOWN"
-                    return Config.actions_to_num["RIGHT"], 0, 0,  Config.right_angle
-                if action == "LEFT":
-                    self.last_action = "LEFT"
-                    return Config.actions_to_num["STAY"], 0, 0, Config.right_angle
-
-            if self.last_action == "LEFT":
-                if action == "UP":
-                    self.last_action = "UP"
-                    return Config.actions_to_num["RIGHT"], 0, 0,  Config.right_angle
-                if action == "DOWN":
-                    self.last_action = "DOWN"
-                    return Config.actions_to_num["LEFT"], 0, 0,  Config.right_angle
-                if action == "RIGHT":
-                    self.last_action = "RIGHT"
-                    return Config.actions_to_num["STAY"], 0, 0, Config.right_angle
-
-            if self.last_action == "DOWN":
-                if action == "RIGHT":
-                    self.last_action = "RIGHT"
-                    return Config.actions_to_num["LEFT"], 0, 0, Config.right_angle
-                if action == "LEFT":
-                    self.last_action = "LEFT"
-                    return Config.actions_to_num["RIGHT"], 0, 0,  Config.right_angle
-                if action == "UP":
-                    self.last_action = "UP"
-                    return Config.actions_to_num["STAY"], 0, 0, Config.right_angle
-
+            if self.directions[0][1] > 0:
+                amount = min(self.directions[0][1], Config.interval_size)
+                print(f"moving forward: {amount} pixels")
+                self.moved_forward = True
+                self.last_interval = amount
+                speed_l, speed_r = self.robot.get_speeds()
+                return Config.actions_to_num["UP"], speed_l, speed_r, int(self.movement_coef * amount)
+            else:
+                amount = min(-self.directions[0][1], Config.interval_size)
+                print(f"moving backward: {amount} pixels")
+                self.moved_forward = True
+                self.last_interval = amount
+                speed_l, speed_r = self.robot.get_speeds()
+                return Config.actions_to_num["DOWN"], speed_r, speed_l, int(self.movement_coef * amount)
 
     def update_step(self):
         # if we have directions left
         if self.directions:
+            print(self.directions)
+            print(self.cords)
+            print(f"new direction: {self.directions[0]} current cord: {self.cords[0]} last cord: {self.last_turn} ")
             # gets current and last location and updates current location
             last_loc = self.get_last_coords()
             current_location = self.get_current_coords()
+            print(f"current location: {current_location}")
             # if rotating
             if self.is_rotating:
-                err = calculate_cos_theta(self.maze_env.get_direction_vector(), self.cords[0] - self.last_turn)
+                rot_vec = (self.cords[0][0] - self.last_turn[0], self.cords[0][1]-self.last_turn[1])
+                err = calculate_cos_theta(rot_vec, self.maze_env.get_direction_vector())
                 # if we are off by less than sensitivity then stop rotation
                 if err < Config.rotation_sensitivity:
+                    print("finished rotating")
                     self.is_rotating = False
                     # starting forward movement so reset old errors
                     self.robot.reset_dir_pid()
             else:
                 # update sideways position
-                err = distance_from_line(self.last_turn, self.cords[0], current_location)/5
-                print("error:", err)
+                err = distance_from_line(self.last_turn, self.cords[0], current_location)
+                if err < 0:
+                    err = min(err+5, 0)
+                if err > 0:
+                    err = max(err-5, 0)
+                print("forward error:", err)
                 self.robot.calc_speeds(err)
                 # update forward coefficient and update directions if was off
                 num_expected = self.last_interval
                 num_traveled = dist(last_loc, current_location)
+                print(f"num_expected {num_expected} num_traveled: {num_traveled}")
                 if self.moved_forward:
                     # update the amount to move the amount left
-                    temp = (self.directions[0][0], dist(self.cords[0], current_location))
+                    print(f"distance left: {get_distance_left(current_location, self.last_turn, self.cords[0])}")
+                    temp = (self.directions[0][0], dist(current_location, self.cords[0]))
                     self.directions[0] = temp
                     # if we moved past or to the point we needed
                     # TODO: consider checking if really negative then recalculate maze path
-                    if self.directions[0][1] <= 0:
+                    if abs(self.directions[0][1]) <= Config.accuracy_threshold:
                         self.directions.pop(0)
                         self.last_turn = self.cords.pop(0)
                         # we finished moving in direction then start rotation
                         self.is_rotating = True
                         # just started rotating so reset old errors
                         self.robot.reset_angle_pid()
+                        print(f"popped direction")
                     self.update_parameters(num_expected, num_traveled, current_location, last_loc)
-                # if num_expected > 0:
-                #     self.confidence_model.update(num_expected, num_traveled)
-                #     if self.confidence_model.to_update():
-                #         self.update_directions()
-                #         time.sleep(0.1)
         else:
             self.update_directions()
 
@@ -356,9 +328,7 @@ if __name__ == "__main__":
     manager = MazeManager()
     manager.init_capture()
     time.sleep(0.5)
-    manager.cam.save_image("saved.jpg")
-
+    # manager.cam.save_image("saved.jpg")
     manager.start_control_server(blocking=False)
-    manager.load_env()
+    manager.load_env(from_file=True)
     manager.start_server(blocking=True)
-

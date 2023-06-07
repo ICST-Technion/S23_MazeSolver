@@ -236,13 +236,8 @@ def get_rotation_to_straighten(image):
 
 def load_image_post_aruco(im, rotation, thresh_val=100):
     thresh, mask = threshold_image(im, min_val=thresh_val, rotation=rotation)
-    skel = skeletonize_image(thresh).astype(np.uint8)
-    # TODO: undo comments if doesnt work
-    kernel = np.ones((3, 3), np.uint8)
-    dilation = cv2.dilate(skel, kernel, iterations=1)
-    # check here
-    # dilation[dilation > 200] = 255
-    warped, m = warp_image(dilation, mask)
+    warped, m = warp_image(thresh, mask)
+    warped = skeletonize_image(warped).astype(np.uint8)
     warped_original = warp_image_saved_matrix(im, m)
     cv2.imwrite('warped.jpg', warped_original)
     return warped, warped_original, m
@@ -270,13 +265,9 @@ class ArucoData(object):
             angle = np.degrees(np.arctan2(p2[1] - p1[1], p2[0] - p1[0])) % 360
             self.aruco_info[id[0]] = {"corners": marker_corners,
                                       "centerX": int((marker_corners[0][0]
-                                                      + marker_corners[1][0]
-                                                      + marker_corners[2][0]
-                                                      + marker_corners[3][0]) / 4),
+                                                      + marker_corners[3][0]) / 2),
                                       "centerY": int((marker_corners[0][1]
-                                                      + marker_corners[1][1]
-                                                      + marker_corners[2][1]
-                                                      + marker_corners[3][1]) / 4),
+                                                      + marker_corners[3][1]) / 2),
                                       "rotation": float(angle),
                                       }
 
@@ -351,4 +342,6 @@ class MazeImage(object):
 
     def get_direction_vector(self):
         marker_corners = self.aruco.aruco_info[Config.CAR_ID]['corners']
-        return marker_corners[0] - marker_corners[3]
+        print(marker_corners)
+        print("corners: ", marker_corners[0], marker_corners[3])
+        return marker_corners[0] - marker_corners[1]

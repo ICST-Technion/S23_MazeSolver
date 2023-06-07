@@ -5,6 +5,22 @@ import numpy as np
 import cv2
 
 
+"""
+consider using
+
+# Create a VideoCapture object for the Raspberry Pi camera
+camera = cv2.VideoCapture(0)  # 0 for the first camera device
+
+# Set the camera resolution (optional)
+camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
+
+while True:
+    ret, frame = camera.read()
+
+"""
+
 class Camera:
     def __init__(self, frame_rate=4, camera_resolution=(2592, 1936)):
         self.cam = PiCamera()

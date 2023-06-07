@@ -28,14 +28,14 @@ class Robot(object):
         return self.l_speed, self.r_speed
 
     def get_rotation_length(self, err):
-        return self.pid_to_rotation_speeds(self.pid_angle.calculate(err * 45))
+        return self.pid_to_rotation_speeds(self.pid_angle.calculate(err))
 
     def calc_speeds(self, err):
         pid = self.pid_controller.calculate(err, 1)
         print("pid", pid)
         self.l_speed, self.r_speed = self.pid_to_speeds(pid)
 
-    def pid_to_speeds(self, steering, max_steering_angle=55):
+    def pid_to_speeds(self, steering, max_steering_angle=70):
         """
         steering = front wheel steering angle, limited by max_steering_angle(max 90 degree)
         """

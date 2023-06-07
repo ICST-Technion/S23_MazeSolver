@@ -57,7 +57,7 @@ class DirectionsServer:
 
     def start_server(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            # s.settimeout(5000)
+            s.settimeout(10000)
             # start up server
             try:
                 s.bind((self.ip, self.port))
@@ -73,6 +73,7 @@ class DirectionsServer:
                         logging.debug(f"Connected by {addr}")
                         while True:
                             # receive data from bot
+                            print("Waiting for data")
                             data = conn.recv(1024)
                             parsed_message = self.parse_message(data)
 
@@ -90,8 +91,7 @@ class DirectionsServer:
                                         logging.debug("updating in progress")
                                         next_direction = (Config.stay, 0, 0, 0)
                                     else:  # get next direction
-                                        next_direction = self.maze.get_next_direction()
-                                print("next dir:", next_direction)
+                                        next_direction = self.maze.get_dynamic_next_direction()
                                 msg = self.create_message(Config.opcodes['DIRECTION_MSG'],
                                                           Config.dev_codes['RPI'],
                                                           Config.dev_codes['ESP_32'],
@@ -102,15 +102,15 @@ class DirectionsServer:
                                                           )
                                 # send data to bot and log to console
                                 conn.sendall(msg)
-                                print(next_direction)
-                                logging.debug(f"sent direction: {Config.directions_map[next_direction[0]]}"
+                                print(f"message sent: {msg}")
+                                print(f"sent direction: {Config.directions_map[next_direction[0]]}"
                                               f" ,{next_direction[1]}, {next_direction[2], next_direction[3]}")
                                 data = conn.recv(1024)
                                 parsed_message = self.parse_message(data)
                                 if parsed_message['opcode'] == Config.opcodes['ESP32_ACK']:
                                     logging.debug(f"Received ACK")
-                except:
-                    pass
+                except Exception as e:
+                    print(e)
 
 
 class ControlServer:

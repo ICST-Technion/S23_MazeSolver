@@ -15,10 +15,11 @@ class Config:
     interval_size = 50
     right_angle = 680
 
+
     # PID params
-    kp = 3
-    ki = .1
-    kd = 3
+    kp = 2
+    ki = .25
+    kd = 0.5
     # angle PID params
     a_kp = 3
     a_ki = .1
@@ -35,8 +36,8 @@ class Config:
     actions_to_num = {"UP": 3, "DOWN": 4, "LEFT": 2, "RIGHT": 1,
                       "DIAG_UL": 5, "DIAG_UR": 5, "DIAG_DL": 5, "DIAG_DR": 5, "STAY": 5}
     angle_map = {"LEFT": 270, "UP": 0, "DOWN": 180, "RIGHT": 90}
-    rotation_sensitivity = 4
-    min_actions_for_movement = 5
+    rotation_sensitivity = 2
+    min_actions_for_movement = 10
 
     opcodes = {
         "DIRECTION_REQUEST": 1,
@@ -56,7 +57,7 @@ class Config:
 
     # Image processing
     aruco_dict = cv2.aruco.DICT_4X4_100
-    image_file = "./Camera/problem_pics/test-3-2.jpg"
+    image_file = "./saved.jpg"
     camera_resolution = (2592, 1936)
     frame_rate = 6
     maze_width = 1189
@@ -65,4 +66,5 @@ class Config:
     CAR_ID = 1
     END_ID = 0
     moved_sensitivity = 30
+    accuracy_threshold = 40
 

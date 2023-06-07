@@ -1,5 +1,5 @@
 import math
-
+import numpy as np
 
 def distance_from_line(line_point1, line_point2, point):
     # Calculate the direction vector of the line
@@ -37,9 +37,16 @@ def distance_from_line(line_point1, line_point2, point):
 
     return distance
 
+def calculate_cos_theta(point1, point2):
+    angle_1 = np.arctan2(point1[0], point1[1])
+    angle_2 = np.arctan2(point2[0], point2[1])
+    return angle_1 - angle_2
 
-a = (400, 600)
-b = (300, 600)
-p = (350, 580)
+a = np.array((400, 600))
+b = np.array((300, 600))
+p = np.array((50, -50))
+v1 = [100, 0]
+v2 = [25, -25]
 
+print(180*calculate_cos_theta(v1, v2)/np.pi)
 print(distance_from_line(a, b, p))
