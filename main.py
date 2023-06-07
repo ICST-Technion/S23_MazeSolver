@@ -24,9 +24,19 @@ def dist(c1, c2):
 
 def get_distance_left(current_loc, src, dst):
     if src[0] == dst[0]:
-        return dist(current_loc, dst)
+        if src[1] <= current_loc[1] <= dst[1] or dst[1] <= current_loc[1] <= src[1]:
+            print("1")
+            return dist(current_loc, dst)
+        else:
+            print("2")
+            return -dist(current_loc, dst)
     else:
-        return dst[0] - current_loc[0]
+        if src[0] <= current_loc[0] <= dst[0] or dst[0] <= current_loc[0] <= src[0]:
+            print("3")
+            return dist(current_loc, dst)
+        else:
+            print("4")
+            return -dist(current_loc, dst)
 
 
 def calculate_cos_theta(point1, point2):
@@ -251,9 +261,9 @@ class MazeManager(object):
             amount = self.robot.get_rotation_length(err)
             print(f"rotating for: {amount}")
             if amount > 0:
-                return Config.actions_to_num["LEFT"], 255, 255, abs(int(amount))
+                return Config.actions_to_num["RIGHT"], Config.rotation_speed, Config.rotation_speed, abs(int(amount))
             if amount < 0:
-                return Config.actions_to_num["RIGHT"], 255, 255, abs(int(amount))
+                return Config.actions_to_num["LEFT"], Config.rotation_speed, Config.rotation_speed, abs(int(amount))
             return Config.actions_to_num["STAY"], 0, 0, int(0)
         else:
             if self.directions[0][1] > 0:
@@ -286,7 +296,7 @@ class MazeManager(object):
                 rot_vec = (self.cords[0][0] - self.last_turn[0], self.cords[0][1]-self.last_turn[1])
                 err = calculate_cos_theta(rot_vec, self.maze_env.get_direction_vector())
                 # if we are off by less than sensitivity then stop rotation
-                if err < Config.rotation_sensitivity:
+                if abs(err) < Config.rotation_sensitivity:
                     print("finished rotating")
                     self.is_rotating = False
                     # starting forward movement so reset old errors
@@ -307,7 +317,7 @@ class MazeManager(object):
                 if self.moved_forward:
                     # update the amount to move the amount left
                     print(f"distance left: {get_distance_left(current_location, self.last_turn, self.cords[0])}")
-                    temp = (self.directions[0][0], dist(current_location, self.cords[0]))
+                    temp = (self.directions[0][0], get_distance_left(current_location, self.last_turn, self.cords[0]))
                     self.directions[0] = temp
                     # if we moved past or to the point we needed
                     # TODO: consider checking if really negative then recalculate maze path

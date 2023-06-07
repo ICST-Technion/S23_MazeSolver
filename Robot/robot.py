@@ -13,6 +13,7 @@ class Robot(object):
         self.pid_angle = PIDController(kp=a_kp, kd=a_kd, ki=a_ki)
         self.l_speed = 0
         self.r_speed = 0
+        self.max_speed = 180
 
     def set_position(self, loc, orientation):
         self.location = loc
@@ -45,12 +46,12 @@ class Robot(object):
             steering = -max_steering_angle
         print("steering: ", steering)
         if steering > 0:
-            left_speed = 255
-            right_speed = min(left_speed - steering, 255)
+            left_speed = self.max_speed - 8
+            right_speed = min(left_speed - steering, self.max_speed)
 
         else:
-            right_speed = 255
-            left_speed = min(right_speed + steering, 255)
+            right_speed = self.max_speed
+            left_speed = min(right_speed + steering, self.max_speed) - 8
 
         return int(left_speed), int(right_speed)
 

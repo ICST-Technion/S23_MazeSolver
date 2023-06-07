@@ -259,18 +259,25 @@ class ArucoData(object):
         # markerCorners, markerIds, rejectedCandidates = detector.detectMarkers(img) # PC
         # Detect the ArUco markers in the image
         print(markerIds)
+        print("reject:", rejectedCandidates)
         for index, id in enumerate(markerIds):
             marker_corners = markerCorners[index][0]
+            if id[0] == 5:
+                vec = (marker_corners[0] - marker_corners[1])/2
+                center_x = int((marker_corners[0][0] + marker_corners[3][0]) / 2 + vec[0])
+                center_y = int((marker_corners[0][1] + marker_corners[3][1]) / 2 + vec[1])
+            else:
+                center_x = int((marker_corners[0][0] + marker_corners[3][0]
+                                + marker_corners[1][0] + marker_corners[2][0]) / 4)
+                center_y = int((marker_corners[0][1] + marker_corners[3][1] +
+                                marker_corners[2][1] + marker_corners[1][1]) / 4)
             p1, p2 = marker_corners[0], marker_corners[1]
             angle = np.degrees(np.arctan2(p2[1] - p1[1], p2[0] - p1[0])) % 360
             self.aruco_info[id[0]] = {"corners": marker_corners,
-                                      "centerX": int((marker_corners[0][0]
-                                                      + marker_corners[3][0]) / 2),
-                                      "centerY": int((marker_corners[0][1]
-                                                      + marker_corners[3][1]) / 2),
+                                      "centerX": center_x,
+                                      "centerY": center_y,
                                       "rotation": float(angle),
                                       }
-
 
 class MazeImage(object):
     def __init__(self, aruco_dict=cv2.aruco.DICT_4X4_50):
@@ -343,5 +350,5 @@ class MazeImage(object):
     def get_direction_vector(self):
         marker_corners = self.aruco.aruco_info[Config.CAR_ID]['corners']
         print(marker_corners)
-        print("corners: ", marker_corners[0], marker_corners[3])
+        print("corners: ", marker_corners[0], marker_corners[1])
         return marker_corners[0] - marker_corners[1]

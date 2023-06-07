@@ -66,5 +66,7 @@ class Config:
     CAR_ID = 1
     END_ID = 0
     moved_sensitivity = 30
-    accuracy_threshold = 40
+    accuracy_threshold = 20
+
+    rotation_speed = 80
 
