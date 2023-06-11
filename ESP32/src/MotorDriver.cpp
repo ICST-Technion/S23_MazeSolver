@@ -43,6 +43,7 @@ void newForward(MSG forward_msg)
 void processCarMovement(MSG directionMSG)
 {
     uint16_t lfc;
+    int64_t endTime;
     switch (directionMSG.direction)
     {
     case FORWARD:
@@ -57,6 +58,10 @@ void processCarMovement(MSG directionMSG)
         break;
     case BACKWARD:
         Serial.println("BACKWARD");
+
+        analogWrite(PWMA, directionMSG.speed_right_wheel);
+        analogWrite(PWMB, directionMSG.speed_left_wheel);
+
         // this is the motor - A
         digitalWrite(IN1, LOW);
         digitalWrite(IN2, HIGH);
@@ -65,13 +70,20 @@ void processCarMovement(MSG directionMSG)
         digitalWrite(IN3, HIGH);
         digitalWrite(IN4, LOW);
 
-        delay(directionMSG.time_angle);
+        endTime = (int64_t)esp_timer_get_time() / 1000 + directionMSG.time_angle;
+        while ((endTime - (int64_t)esp_timer_get_time() / 1000) > 0)
+        {
+        };
+
         directionMSG.direction = STOP;
         processCarMovement(directionMSG);
         break;
 
     case LEFT:
         Serial.println("LEFT");
+
+        analogWrite(PWMB, directionMSG.speed_left_wheel);
+        analogWrite(PWMA, directionMSG.speed_right_wheel);
 
         // this is the motor - A
         digitalWrite(IN1, HIGH);
@@ -80,17 +92,12 @@ void processCarMovement(MSG directionMSG)
         //  // this is the motor - B
         digitalWrite(IN3, HIGH);
         digitalWrite(IN4, LOW);
-        analogWrite(PWMB, 180);
-        analogWrite(PWMA, 180);
-        // do half left turn
-        delay(600);
 
-        lfc = digitalRead(LF_C);
-        do
-        {
-            lfc = digitalRead(LF_C);
-            delay(40);
-        } while (lfc == 1);
+        // do half left turn
+        // delay(600);
+
+        // lfc = digitalRead(LF_C);
+        delay(directionMSG.time_angle);
 
         directionMSG.direction = STOP;
         processCarMovement(directionMSG);
@@ -99,6 +106,10 @@ void processCarMovement(MSG directionMSG)
 
     case RIGHT:
         Serial.println("RIGHT");
+
+        analogWrite(PWMB, directionMSG.speed_left_wheel);
+        analogWrite(PWMA, directionMSG.speed_right_wheel);
+
         // this is the motor - A
         digitalWrite(IN1, LOW);
         digitalWrite(IN2, HIGH);
@@ -106,18 +117,19 @@ void processCarMovement(MSG directionMSG)
         //  // this is the motor - B
         digitalWrite(IN3, LOW);
         digitalWrite(IN4, HIGH);
-        analogWrite(PWMB, 180);
-        analogWrite(PWMA, 180);
+
         // analogWrite(PWMA, 255);
         // analogWrite(PWMB, 0);
-        delay(600);
+        // delay(600);
 
-        lfc = digitalRead(LF_C);
-        do
-        {
-            lfc = digitalRead(LF_C);
-            delay(40);
-        } while (lfc == 1);
+        // lfc = digitalRead(LF_C);
+        // do
+        // {
+        //     lfc = digitalRead(LF_C);
+        //     delay(40);
+        // } while (lfc == 1);
+
+        delay(directionMSG.time_angle);
 
         directionMSG.direction = STOP;
         processCarMovement(directionMSG);
@@ -255,15 +267,15 @@ void LineFollowerForward(MSG msg)
         // delay(min(time_angle, 50));
         // time_angle -= min(time_angle, 50);
 
-        uint16_t lfor = digitalRead(LFO_R);
-        uint16_t lfir = digitalRead(LFI_R);
-        uint16_t lfc = digitalRead(LF_C);
-        uint16_t lfil = digitalRead(LFI_L);
-        uint16_t lfol = digitalRead(LFO_L);
+        // uint16_t lfor = digitalRead(LFO_R);
+        // uint16_t lfir = digitalRead(LFI_R);
+        // uint16_t lfc = digitalRead(LF_C);
+        // uint16_t lfil = digitalRead(LFI_L);
+        // uint16_t lfol = digitalRead(LFO_L);
 
-        int sum = lfor + lfir + lfc + lfil + lfol;
-        Serial.print("sum = ");
-        Serial.println(sum);
+        // int sum = lfor + lfir + lfc + lfil + lfol;
+        // Serial.print("sum = ");
+        // Serial.println(sum);
 
         // if (sum == 5)
         // {

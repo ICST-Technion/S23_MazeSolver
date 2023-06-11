@@ -6,16 +6,15 @@
 #include "messages.h"
 
 // driver motor pins
-#define PWMA 12
-#define PWMB 32
+#define PWMA 32 // 12
+#define PWMB 12 // 32
 // motor a
 
-#define IN1 27
-#define IN2 14
+#define IN1 25 // 27
+#define IN2 33 // 14
 // motor b
-#define IN3 33
-#define IN4 25
-
+#define IN3 14 // 33
+#define IN4 27 // 25
 
 #define STBY 26
 

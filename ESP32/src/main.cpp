@@ -38,11 +38,11 @@ void setup()
   // pinMode(LED2, OUTPUT);
 
   // line follower pins
-  pinMode(LFO_R, INPUT);
-  pinMode(LFI_R, INPUT);
-  pinMode(LF_C, INPUT);
-  pinMode(LFI_L, INPUT);
-  pinMode(LFO_L, INPUT);
+  // pinMode(LFO_R, INPUT);
+  // pinMode(LFI_R, INPUT);
+  // pinMode(LF_C, INPUT);
+  // pinMode(LFI_L, INPUT);
+  // pinMode(LFO_L, INPUT);
 
   // Connect to Wi-Fi network
   state = CONNECT_TO_WIFI;
@@ -50,10 +50,11 @@ void setup()
 }
 
 void testWheels();
+void testPWMWheels();
 
 void loop()
 {
-  // testWheels();
+  // testPWMWheels();
   switch (state)
   {
   case CONNECT_TO_WIFI:
@@ -113,20 +114,22 @@ void loop()
 void testWheels()
 {
   MSG direction;
-
+  direction.speed_left_wheel = 255;
+  direction.speed_right_wheel = 255;
   while (1)
   {
 
+    Serial.println(direction.speed_left_wheel);
+
     direction.direction = FORWARD;
-    direction.speed_left_wheel = 207;
-    direction.speed_right_wheel = 200;
-    direction.time_angle = 182;
+
+    direction.time_angle = 3000;
     int delay_time = 1000;
     processCarMovement(direction);
     delay(delay_time);
-    // direction.direction = BACKWARD;
-    // processCarMovement(direction);
-    // delay(delay_time);
+    direction.direction = BACKWARD;
+    processCarMovement(direction);
+    delay(delay_time);
     direction.direction = LEFT;
     processCarMovement(direction);
     delay(delay_time);
@@ -137,4 +140,67 @@ void testWheels()
     processCarMovement(direction);
     delay(delay_time * 5);
   }
+
+  exit(0);
+}
+
+void testPWMWheels()
+{
+  MSG direction;
+  direction.speed_left_wheel = 200;
+  direction.speed_right_wheel = 255;
+  while (direction.speed_left_wheel > 0)
+  {
+    direction.direction = FORWARD;
+
+    direction.time_angle = 1000;
+    int delay_time = 200;
+    processCarMovement(direction);
+    delay(delay_time);
+    direction.direction = BACKWARD;
+    processCarMovement(direction);
+    delay(delay_time);
+    direction.direction = LEFT;
+    processCarMovement(direction);
+    delay(delay_time);
+    direction.direction = RIGHT;
+    processCarMovement(direction);
+    delay(delay_time);
+    direction.direction = STOP;
+    processCarMovement(direction);
+    delay(delay_time * 5);
+
+    direction.speed_left_wheel -= 40;
+    direction.speed_right_wheel -= 40;
+  }
+
+  direction.speed_left_wheel = 255;
+  direction.speed_right_wheel = 255;
+
+  while (direction.speed_left_wheel > 0)
+  {
+    direction.direction = FORWARD;
+
+    direction.time_angle = 1000;
+    int delay_time = 200;
+    processCarMovement(direction);
+    delay(delay_time);
+    direction.direction = BACKWARD;
+    processCarMovement(direction);
+    delay(delay_time);
+    direction.direction = LEFT;
+    processCarMovement(direction);
+    delay(delay_time);
+    direction.direction = RIGHT;
+    processCarMovement(direction);
+    delay(delay_time);
+    direction.direction = STOP;
+    processCarMovement(direction);
+    delay(delay_time * 5);
+
+    direction.speed_left_wheel -= 25;
+    direction.speed_right_wheel -= 25;
+  }
+
+  exit(0);
 }
