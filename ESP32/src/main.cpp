@@ -10,8 +10,6 @@
 
 using namespace std;
 
-#define LED1 (35)
-#define LED2 (34)
 #define ERROR (-1)
 #define SUCCESS (0)
 
@@ -34,16 +32,10 @@ void setup()
   setupPinCarModes();
 
   // leds
-  // pinMode(LED1, OUTPUT);
-  // pinMode(LED2, OUTPUT);
-
-  // line follower pins
-  // pinMode(LFO_R, INPUT);
-  // pinMode(LFI_R, INPUT);
-  // pinMode(LF_C, INPUT);
-  // pinMode(LFI_L, INPUT);
-  // pinMode(LFO_L, INPUT);
-
+  pinMode(LED1, OUTPUT);
+  pinMode(LED2, OUTPUT);
+  digitalWrite(LED1, HIGH);
+  digitalWrite(LED2, HIGH);
   // Connect to Wi-Fi network
   state = CONNECT_TO_WIFI;
   WiFi.mode(WIFI_STA);
@@ -54,13 +46,12 @@ void testPWMWheels();
 
 void loop()
 {
-  // testPWMWheels();
+  // testWheels();
   switch (state)
   {
   case CONNECT_TO_WIFI:
     // blocking
     connectToWiFi(ssid, password);
-    // digitalWrite(LED1, HIGH);
     //  wifi connected
     state = CONNECT_TO_SERVER;
     break;
@@ -68,7 +59,6 @@ void loop()
     if (WiFi.status() == WL_CONNECTED)
     {
       connectToServer(client, host, port);
-      // digitalWrite(LED2, HIGH);
       //  wifi and server connection succeed
       state = DO_COMMANDS;
     }
@@ -116,6 +106,7 @@ void testWheels()
   MSG direction;
   direction.speed_left_wheel = 255;
   direction.speed_right_wheel = 255;
+
   while (1)
   {
 
@@ -126,6 +117,7 @@ void testWheels()
     direction.time_angle = 3000;
     int delay_time = 1000;
     processCarMovement(direction);
+    continue;
     delay(delay_time);
     direction.direction = BACKWARD;
     processCarMovement(direction);
@@ -140,8 +132,6 @@ void testWheels()
     processCarMovement(direction);
     delay(delay_time * 5);
   }
-
-  exit(0);
 }
 
 void testPWMWheels()
@@ -201,6 +191,4 @@ void testPWMWheels()
     direction.speed_left_wheel -= 25;
     direction.speed_right_wheel -= 25;
   }
-
-  exit(0);
 }

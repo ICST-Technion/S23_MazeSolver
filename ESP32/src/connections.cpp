@@ -15,6 +15,7 @@ void connectToWiFi(const char *ssid, const char *password)
         delay(1000);
     }
     Serial.println("Connected to WiFi");
+    digitalWrite(LED1, LOW);
 }
 
 void connectToServer(WiFiClient &client, const char *host, const uint16_t port)
@@ -25,6 +26,7 @@ void connectToServer(WiFiClient &client, const char *host, const uint16_t port)
         Serial.println("Try to connect server");
         delay(1000);
     }
+    digitalWrite(LED2, LOW);
 }
 
 ROBOT_STATE checkConnectivity(WiFiClient &client)
@@ -32,11 +34,14 @@ ROBOT_STATE checkConnectivity(WiFiClient &client)
     // check WiFi connection
     if (WiFi.status() != WL_CONNECTED)
     {
+        digitalWrite(LED2, HIGH);
+        digitalWrite(LED1, HIGH);
         return CONNECT_TO_WIFI;
     }
     // check client-server connection
     if (WiFi.status() == WL_CONNECTED && client.connected() == false)
     {
+        digitalWrite(LED2, HIGH);
         return CONNECT_TO_SERVER;
     }
     // everything is fine .. do more steps :)

@@ -8,6 +8,9 @@
 #define LFI_L 17
 #define LFO_L 16
 
+#define LED1 (23)
+#define LED2 (13)
+
 typedef enum
 {
     CONNECT_TO_WIFI,
