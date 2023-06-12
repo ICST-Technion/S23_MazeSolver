@@ -21,7 +21,7 @@ class Config:
     ki = .25
     kd = 0.5
     # angle PID params
-    a_kp = 3
+    a_kp = 3.2
     a_ki = .1
     a_kd = 3
 
@@ -63,10 +63,13 @@ class Config:
     maze_width = 1189
     maze_height = 849
     # image_file = "./Camera/sample_images/good2.jpg"
-    CAR_ID = 1
+    CAR_ID = 4
+    BACKWARD_CAR_ID = 3
+    FORWARD_CAR_ID = 1
     END_ID = 0
-    moved_sensitivity = 30
-    accuracy_threshold = 20
 
-    rotation_speed = 80
+    moved_sensitivity = 30
+    accuracy_threshold = 15
+
+    rotation_speed = 100
 

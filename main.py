@@ -24,26 +24,46 @@ def dist(c1, c2):
 
 def get_distance_left(current_loc, src, dst):
     if src[0] == dst[0]:
-        if src[1] <= current_loc[1] <= dst[1] or dst[1] <= current_loc[1] <= src[1]:
-            print("1")
+        if min(src[1], dst[1]) <= current_loc[1] <= max(dst[1], src[1]):
             return dist(current_loc, dst)
         else:
-            print("2")
             return -dist(current_loc, dst)
     else:
-        if src[0] <= current_loc[0] <= dst[0] or dst[0] <= current_loc[0] <= src[0]:
-            print("3")
+        if min(src[0], dst[0]) <= current_loc[0] <= max(src[0], dst[0]):
             return dist(current_loc, dst)
         else:
-            print("4")
             return -dist(current_loc, dst)
 
 
-def calculate_cos_theta(point1, point2):
-    angle_1 = 180*np.arctan2(point1[0], point1[1])/np.pi
-    angle_2 = 180*np.arctan2(point2[0], point2[1])/np.pi
-    print(f"a1: {angle_1} a2: {angle_2}")
+def calculate_cos_theta(next_direction, current_direction):
+    angle_1 = 180*np.arctan2(next_direction[0], next_direction[1])/np.pi
+    angle_1 = (angle_1 + 360) % 360
+    angle_2 = 180*np.arctan2(current_direction[0], current_direction[1])/np.pi
+    angle_2 = (angle_2 + 360) % 360
+    rotation_amount = min(abs(angle_1 - angle_2), abs(360 - abs(angle_1-angle_2)))
+
+    if angle_1 == 0:
+        if angle_2 > 180:
+            return -rotation_amount
+        else:
+            return rotation_amount
+    if angle_1 == 90:
+        if 270 > angle_2 > 90:
+            return rotation_amount
+        else:
+            return -rotation_amount
+    if angle_1 == 180:
+        if angle_2 > 180:
+            return rotation_amount
+        else:
+            return -rotation_amount
+    if angle_1 == 270:
+        if 270 > angle_2 > 90:
+            return -rotation_amount
+        else:
+            return rotation_amount
     return angle_1 - angle_2
+
 
 
 def size(a):
@@ -152,7 +172,6 @@ class MazeManager(object):
         self.update_directions()
 
     def update_directions(self):
-        print("updating directions")
         changed_stop = False
         if not self.stopped:
             self.stopped = True
@@ -161,7 +180,6 @@ class MazeManager(object):
         self.status['calculating_path'] = True
         self.reload_image()
         self.directions = self.get_directions()
-        print(self.directions)
         self.status['calculating_path'] = False
         self.server.finished_updating()
         if changed_stop:
@@ -175,12 +193,16 @@ class MazeManager(object):
         current_cords = self.maze_env.get_current_coords()
         return current_cords
 
+    def get_forward_coords(self):
+        self.reload_image()
+        current_cords = self.maze_env.get_forward_coords()
+        return current_cords
+
     def get_last_coords(self):
         return self.maze_env.get_current_coords()
 
     def update_parameters(self, expected, actual, current, last):
         if dist(last, current) > Config.moved_sensitivity:
-            print("updated coef:", expected / actual)
             self.movement_coef = (expected / actual) * self.movement_coef
 
     def init_capture(self):
@@ -214,7 +236,6 @@ class MazeManager(object):
             # added to improve A star times
             self.agent.heuristic = ContextHeuristic(cords)
             self.status['path_found'] = True
-            print("got cost: ", cost)
             logging.debug(f"found path: {cost != -1}")
             smoothed_actions = self.process_actions(actions)
 
@@ -247,76 +268,70 @@ class MazeManager(object):
 
     def get_dynamic_next_direction(self):
         if not self.directions:
-            print("ran out")
             return Config.actions_to_num["STAY"], 0, 0, 0
 
         if self.is_rotating:
-            print("got to rotate")
             try:
                 rot_vec = (self.cords[0][0] - self.last_turn[0], self.cords[0][1]-self.last_turn[1])
                 err = calculate_cos_theta(rot_vec, self.maze_env.get_direction_vector())
+                print(f"rotation error: {err}")
+                amount = self.robot.get_rotation_length(err)
+                if amount > 0:
+                    return Config.actions_to_num["LEFT"], Config.rotation_speed, Config.rotation_speed, abs(int(amount))
+                if amount < 0:
+                    return Config.actions_to_num["RIGHT"], Config.rotation_speed, Config.rotation_speed, abs(int(amount))
+                return Config.actions_to_num["STAY"], 0, 0, int(0)
             except Exception as e:
                 print(e)
-            print(f"got rotate err: {err}")
-            amount = self.robot.get_rotation_length(err)
-            print(f"rotating for: {amount}")
-            if amount > 0:
-                return Config.actions_to_num["RIGHT"], Config.rotation_speed, Config.rotation_speed, abs(int(amount))
-            if amount < 0:
-                return Config.actions_to_num["LEFT"], Config.rotation_speed, Config.rotation_speed, abs(int(amount))
-            return Config.actions_to_num["STAY"], 0, 0, int(0)
         else:
             if self.directions[0][1] > 0:
                 amount = min(self.directions[0][1], Config.interval_size)
-                print(f"moving forward: {amount} pixels")
                 self.moved_forward = True
                 self.last_interval = amount
                 speed_l, speed_r = self.robot.get_speeds()
-                return Config.actions_to_num["UP"], speed_l, speed_r, int(self.movement_coef * amount)
+                if amount < 25:
+                    speed_l /= 2
+                    speed_r /= 2
+                return Config.actions_to_num["UP"], int(speed_l), int(speed_r), int(self.movement_coef * amount)
             else:
                 amount = min(-self.directions[0][1], Config.interval_size)
-                print(f"moving backward: {amount} pixels")
                 self.moved_forward = True
                 self.last_interval = amount
                 speed_l, speed_r = self.robot.get_speeds()
-                return Config.actions_to_num["DOWN"], speed_r, speed_l, int(self.movement_coef * amount)
+                if amount < 25:
+                    speed_l /= 2
+                    speed_r /= 2
+                return Config.actions_to_num["DOWN"], int(speed_r), int(speed_l), int(self.movement_coef * amount)
 
     def update_step(self):
         # if we have directions left
         if self.directions:
-            print(self.directions)
-            print(self.cords)
-            print(f"new direction: {self.directions[0]} current cord: {self.cords[0]} last cord: {self.last_turn} ")
             # gets current and last location and updates current location
             last_loc = self.get_last_coords()
             current_location = self.get_current_coords()
-            print(f"current location: {current_location}")
+            current_forward_location = self.get_forward_coords()
             # if rotating
             if self.is_rotating:
                 rot_vec = (self.cords[0][0] - self.last_turn[0], self.cords[0][1]-self.last_turn[1])
                 err = calculate_cos_theta(rot_vec, self.maze_env.get_direction_vector())
                 # if we are off by less than sensitivity then stop rotation
                 if abs(err) < Config.rotation_sensitivity:
-                    print("finished rotating")
                     self.is_rotating = False
                     # starting forward movement so reset old errors
                     self.robot.reset_dir_pid()
             else:
                 # update sideways position
-                err = distance_from_line(self.last_turn, self.cords[0], current_location)
+                err = distance_from_line(self.last_turn, self.cords[0], current_forward_location)
                 if err < 0:
                     err = min(err+5, 0)
                 if err > 0:
                     err = max(err-5, 0)
-                print("forward error:", err)
                 self.robot.calc_speeds(err)
                 # update forward coefficient and update directions if was off
                 num_expected = self.last_interval
                 num_traveled = dist(last_loc, current_location)
-                print(f"num_expected {num_expected} num_traveled: {num_traveled}")
                 if self.moved_forward:
                     # update the amount to move the amount left
-                    print(f"distance left: {get_distance_left(current_location, self.last_turn, self.cords[0])}")
                     temp = (self.directions[0][0], get_distance_left(current_location, self.last_turn, self.cords[0]))
                     self.directions[0] = temp
                     # if we moved past or to the point we needed
@@ -328,7 +343,6 @@ class MazeManager(object):
                         self.is_rotating = True
                         # just started rotating so reset old errors
                         self.robot.reset_angle_pid()
-                        print(f"popped direction")
                     self.update_parameters(num_expected, num_traveled, current_location, last_loc)
         else:
             self.update_directions()

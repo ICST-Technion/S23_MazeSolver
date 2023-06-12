@@ -100,6 +100,9 @@ class MazeSearchEnv(object):
     def get_current_coords(self):
         return self.__data_obj.get_current_point()
 
+    def get_forward_coords(self):
+        return self.__data_obj.get_forward_point()
+
     def is_legal_state(self, row, col):
         if row < 0 or row >= self.__data_obj.get_max_row():
             return False

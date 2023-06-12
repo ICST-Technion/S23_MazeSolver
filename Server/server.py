@@ -73,7 +73,6 @@ class DirectionsServer:
                         logging.debug(f"Connected by {addr}")
                         while True:
                             # receive data from bot
-                            print("Waiting for data")
                             data = conn.recv(1024)
                             parsed_message = self.parse_message(data)
 
@@ -102,7 +101,6 @@ class DirectionsServer:
                                                           )
                                 # send data to bot and log to console
                                 conn.sendall(msg)
-                                print(f"message sent: {msg}")
                                 print(f"sent direction: {Config.directions_map[next_direction[0]]}"
                                               f" ,{next_direction[1]}, {next_direction[2], next_direction[3]}")
                                 data = conn.recv(1024)
@@ -129,7 +127,6 @@ class ControlServer:
 
     async def handle_client(self, websocket, path):
         async for message in websocket:
-            print(f"Received message: {message}")
             if message == "start":
                 self.maze.start_solver()
                 # if started send app current image using

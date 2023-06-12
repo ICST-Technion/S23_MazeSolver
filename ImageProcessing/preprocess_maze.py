@@ -103,7 +103,6 @@ def warp_image(img, thresh, buffer=50):
     # Fit a rotated rect
     corners = cv2.goodFeaturesToTrack(edges, 4, 0.1, 500)
     corners = corners.reshape(corners.shape[0], 2).astype(np.int32)
-    print(corners)
     corners = cyclic_intersection_pts(corners)
     # Get rotated rect dimensions
     dstPts = [[0, 0], [Config.maze_width, 0], [Config.maze_width, Config.maze_height], [0, Config.maze_height]]
@@ -258,19 +257,12 @@ class ArucoData(object):
         markerCorners, markerIds, rejectedCandidates = cv2.aruco.detectMarkers(img, dictionary)  # RPI
         # markerCorners, markerIds, rejectedCandidates = detector.detectMarkers(img) # PC
         # Detect the ArUco markers in the image
-        print(markerIds)
-        print("reject:", rejectedCandidates)
         for index, id in enumerate(markerIds):
             marker_corners = markerCorners[index][0]
-            if id[0] == 5:
-                vec = (marker_corners[0] - marker_corners[1])/2
-                center_x = int((marker_corners[0][0] + marker_corners[3][0]) / 2 + vec[0])
-                center_y = int((marker_corners[0][1] + marker_corners[3][1]) / 2 + vec[1])
-            else:
-                center_x = int((marker_corners[0][0] + marker_corners[3][0]
-                                + marker_corners[1][0] + marker_corners[2][0]) / 4)
-                center_y = int((marker_corners[0][1] + marker_corners[3][1] +
-                                marker_corners[2][1] + marker_corners[1][1]) / 4)
+            center_x = int((marker_corners[0][0] + marker_corners[3][0]
+                            + marker_corners[1][0] + marker_corners[2][0]) / 4)
+            center_y = int((marker_corners[0][1] + marker_corners[3][1] +
+                            marker_corners[2][1] + marker_corners[1][1]) / 4)
             p1, p2 = marker_corners[0], marker_corners[1]
             angle = np.degrees(np.arctan2(p2[1] - p1[1], p2[0] - p1[0])) % 360
             self.aruco_info[id[0]] = {"corners": marker_corners,
@@ -278,6 +270,14 @@ class ArucoData(object):
                                       "centerY": center_y,
                                       "rotation": float(angle),
                                       }
+        # TODO: add car id to dictionary with appropriate stuff
+        #
+        self.aruco_info[Config.CAR_ID] = {"corners": [],
+                                          "centerX": self.aruco_info[Config.BACKWARD_CAR_ID]['centerX'],
+                                          "centerY": self.aruco_info[Config.BACKWARD_CAR_ID]['centerY'],
+                                          "rotation": 0,
+                                          }
+
 
 class MazeImage(object):
     def __init__(self, aruco_dict=cv2.aruco.DICT_4X4_50):
@@ -347,8 +347,12 @@ class MazeImage(object):
     def get_current_point(self):
         return self.aruco.aruco_info[Config.CAR_ID]['centerY'], self.aruco.aruco_info[Config.CAR_ID]['centerX']
 
+    def get_forward_point(self):
+        return self.aruco.aruco_info[Config.FORWARD_CAR_ID]['centerY'], self.aruco.aruco_info[Config.FORWARD_CAR_ID]['centerX']
+
+
     def get_direction_vector(self):
-        marker_corners = self.aruco.aruco_info[Config.CAR_ID]['corners']
-        print(marker_corners)
-        print("corners: ", marker_corners[0], marker_corners[1])
-        return marker_corners[0] - marker_corners[1]
+        forward = self.aruco.aruco_info[Config.FORWARD_CAR_ID]
+        backward = self.aruco.aruco_info[Config.BACKWARD_CAR_ID]
+
+        return forward['centerY'] - backward['centerY'], forward['centerX'] - backward['centerX']
