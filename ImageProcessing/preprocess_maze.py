@@ -10,6 +10,7 @@ import numpy as np
 from skimage.morphology import skeletonize
 
 from config import Config
+
 # In[26]:
 
 r = 0
@@ -17,6 +18,7 @@ MAZE_COLOR = 255
 BACKGROUND_COLOR = 0
 origin = [2, 3]
 refvec = [0, 1]
+
 
 # In[27]:
 
@@ -32,27 +34,27 @@ def load_raw_image(path):
     return np.array(raw_image)
 
 
-
 def clockwiseangle_and_distance(point):
     # Vector between point and the origin: v = p - o
-    vector = [point[0]-origin[0], point[1]-origin[1]]
+    vector = [point[0] - origin[0], point[1] - origin[1]]
     # Length of vector: ||v||
     lenvector = math.hypot(vector[0], vector[1])
     # If length is zero there is no angle
     if lenvector == 0:
         return -math.pi, 0
     # Normalize vector: v/||v||
-    normalized = [vector[0]/lenvector, vector[1]/lenvector]
-    dotprod  = normalized[0]*refvec[0] + normalized[1]*refvec[1]     # x1*x2 + y1*y2
-    diffprod = refvec[1]*normalized[0] - refvec[0]*normalized[1]     # x1*y2 - y1*x2
+    normalized = [vector[0] / lenvector, vector[1] / lenvector]
+    dotprod = normalized[0] * refvec[0] + normalized[1] * refvec[1]  # x1*x2 + y1*y2
+    diffprod = refvec[1] * normalized[0] - refvec[0] * normalized[1]  # x1*y2 - y1*x2
     angle = math.atan2(diffprod, dotprod)
     # Negative angles represent counter-clockwise angles so we need to subtract them
     # from 2*pi (360 degrees)
     if angle < 0:
-        return 2*math.pi+angle, lenvector
+        return 2 * math.pi + angle, lenvector
     # I return first the angle because that's the primary sorting criterium
     # but if two vectors have the same angle then the shorter distance should come first.
     return angle, lenvector
+
 
 def cyclic_intersection_pts(pts):
     """
@@ -89,9 +91,8 @@ def point_on_image(x: int, y: int, image_shape: tuple):
     return 0 <= y < image_shape[0] and 0 <= x < image_shape[1]
 
 
-
 def angle_to(point):
-  return math.atan2(point[1], point[0])
+    return math.atan2(point[1], point[0])
 
 
 def warp_image(img, thresh, buffer=50):
@@ -102,7 +103,6 @@ def warp_image(img, thresh, buffer=50):
     # Fit a rotated rect
     corners = cv2.goodFeaturesToTrack(edges, 4, 0.1, 500)
     corners = corners.reshape(corners.shape[0], 2).astype(np.int32)
-    print(corners)
     corners = cyclic_intersection_pts(corners)
     # Get rotated rect dimensions
     dstPts = [[0, 0], [Config.maze_width, 0], [Config.maze_width, Config.maze_height], [0, Config.maze_height]]
@@ -117,9 +117,11 @@ def warp_image(img, thresh, buffer=50):
     # Save the output
     return out, m
 
+
 def warp_image_saved_matrix(img, m):
     out = cv2.warpPerspective(img, m, (int(Config.maze_width), int(Config.maze_height)))
     return out
+
 
 def straighten_image(img, contour):
     rect = cv2.minAreaRect(contour)
@@ -138,6 +140,7 @@ def straighten_image(img, contour):
     # if the object is not planar
     # img_fixed = cv2.warpPerspective(img, M, (img.shape[1], img.shape[0]))
     cv2.imwrite('fixed_image.jpg', img_fixed)
+
 
 # In[29]:
 def threshold_image(img, min_val=127, rotation=0, max_val=255):
@@ -185,11 +188,10 @@ def get_end_point(img):
 
 
 def fill_aruco(image, corners, extra=5):
-
     minc = min(corners, key=lambda x: x[0] + x[1])
     maxc = max(corners, key=lambda x: x[0] + x[1])
-    return cv2.rectangle(image, ((int)(minc[0]) - extra, (int)(minc[1]) - extra) ,
-                         ((int)(maxc[0]) + extra, (int)(maxc[1]) + extra) , 255, -1)
+    return cv2.rectangle(image, ((int)(minc[0]) - extra, (int)(minc[1]) - extra),
+                         ((int)(maxc[0]) + extra, (int)(maxc[1]) + extra), 255, -1)
 
 
 def skeletonize_image(image):
@@ -214,7 +216,7 @@ def get_num_lines(angle, edges):
     polar_lines = cv2.HoughLines(rotated_img, 1, np.pi / 180, 150, 0)
     angles = np.array(polar_lines[:, 0][:, 1])
     x = (((0 - epsilon <= angles) & (angles < 0 + epsilon)) |
-            ((np.pi / 2 - epsilon <= angles) & (angles < np.pi + epsilon))).sum()
+         ((np.pi / 2 - epsilon <= angles) & (angles < np.pi + epsilon))).sum()
     return x
 
 
@@ -231,16 +233,14 @@ def get_rotation_to_straighten(image):
     return max_i
 
 
-
 def load_image_post_aruco(im, rotation, thresh_val=100):
     thresh, mask = threshold_image(im, min_val=thresh_val, rotation=rotation)
-    skel = skeletonize_image(thresh).astype(np.uint8)
-    kernel = np.ones((3, 3), np.uint8)
-    dilation = cv2.dilate(skel, kernel, iterations=1)
-    warped, m = warp_image(dilation, mask)
+    warped, m = warp_image(thresh, mask)
+    warped = skeletonize_image(warped).astype(np.uint8)
     warped_original = warp_image_saved_matrix(im, m)
     cv2.imwrite('warped.jpg', warped_original)
     return warped, warped_original, m
+
 
 class ArucoData(object):
     def __init__(self, img, aruco_dict):
@@ -250,7 +250,6 @@ class ArucoData(object):
         self.extract_basic_info(img)
 
     def extract_basic_info(self, img):
-
         dictionary = cv2.aruco.getPredefinedDictionary(self.aruco_dict)
         # parameters = cv2.aruco.DetectorParameters()  # PC
         # parameters.useAruco3Detection = True
@@ -258,48 +257,55 @@ class ArucoData(object):
         markerCorners, markerIds, rejectedCandidates = cv2.aruco.detectMarkers(img, dictionary)  # RPI
         # markerCorners, markerIds, rejectedCandidates = detector.detectMarkers(img) # PC
         # Detect the ArUco markers in the image
-        print(markerIds)
         for index, id in enumerate(markerIds):
             marker_corners = markerCorners[index][0]
+            center_x = int((marker_corners[0][0] + marker_corners[3][0]
+                            + marker_corners[1][0] + marker_corners[2][0]) / 4)
+            center_y = int((marker_corners[0][1] + marker_corners[3][1] +
+                            marker_corners[2][1] + marker_corners[1][1]) / 4)
             p1, p2 = marker_corners[0], marker_corners[1]
             angle = np.degrees(np.arctan2(p2[1] - p1[1], p2[0] - p1[0])) % 360
             self.aruco_info[id[0]] = {"corners": marker_corners,
-                                   "centerX": int((marker_corners[0][0]
-                                                   + marker_corners[1][0]
-                                                   + marker_corners[2][0]
-                                                   + marker_corners[3][0]) / 4),
-                                   "centerY": int((marker_corners[0][1]
-                                                   + marker_corners[1][1]
-                                                   + marker_corners[2][1]
-                                                   + marker_corners[3][1]) / 4),
-                                   "rotation": float(angle),
-                                   }
+                                      "centerX": center_x,
+                                      "centerY": center_y,
+                                      "rotation": float(angle),
+                                      }
+        # TODO: add car id to dictionary with appropriate stuff
+        #
+        self.aruco_info[Config.CAR_ID] = {"corners": [],
+                                          "centerX": self.aruco_info[Config.BACKWARD_CAR_ID]['centerX'],
+                                          "centerY": self.aruco_info[Config.BACKWARD_CAR_ID]['centerY'],
+                                          "rotation": 0,
+                                          }
+
 
 class MazeImage(object):
-    def __init__(self, path, aruco_dict=cv2.aruco.DICT_4X4_50):
-        data = load_raw_image(path)
-        self.rotation = get_rotation_to_straighten(data)
+    def __init__(self, aruco_dict=cv2.aruco.DICT_4X4_50):
+        self.rotation = None
         self.aruco_dict = aruco_dict
-        # data = rotate_image(data, self.rotation)
-        self.data, warped_orig, self.warp_matrix = load_image_post_aruco(data, self.rotation)
+        self.data, warped_orig, self.warp_matrix = None, None, None
+        self.original_image = None
+        self.aruco = None
+        self.warped_image = None
+
+    def load_initial_image(self, img):
+        self.rotation = get_rotation_to_straighten(img)
+        self.data, warped_orig, self.warp_matrix = load_image_post_aruco(img, self.rotation)
         self.original_image = np.copy(self.data)
         self.aruco = None
-        # fill_aruco(self.data, self.aruco.aruco_info[Config.END_ID]['corners'])
-        cv2.imwrite('./maze_no_aruco_init.jpg', self.data)
+        cv2.imwrite("mazeImage.jpg", self.data)
 
-    def load_aruco_image(self, img, from_arr=False):
-        if not from_arr:
-            data = load_raw_image(img)
-        else:
-            data = img
-        data = warp_image_saved_matrix(data, self.warp_matrix)
-        cv2.imwrite("warped-image.jpg", self.data)
+    def load_aruco_image(self, img):
+        data = warp_image_saved_matrix(img, self.warp_matrix)
+        self.warped_image = np.copy(data)
         self.aruco = ArucoData(data, self.aruco_dict)
         self.data = np.copy(self.original_image)
-        fill_aruco(self.data, self.aruco.aruco_info[Config.CAR_ID]['corners'])
+        # fill_aruco(self.data, self.aruco.aruco_info[Config.CAR_ID]['corners'])
         fill_aruco(self.data, self.aruco.aruco_info[Config.END_ID]['corners'])
-        cv2.imwrite("witharuco.jpg", self.data)
+        cv2.imwrite("arucoImage.jpg", self.data)
 
+    def get_warped_image(self):
+        return self.warped_image
 
     def get_car_angle(self):
         return self.aruco.aruco_info[Config.CAR_ID]['rotation']
@@ -322,7 +328,36 @@ class MazeImage(object):
         return self.aruco.aruco_info[Config.END_ID]['centerY'], self.aruco.aruco_info[Config.END_ID]['centerX']
 
     def get_start_point(self):
+        curr_row, curr_col = self.get_current_point()
+        checked = []
+        q = [(curr_row, curr_col)]
+        while q:
+            v = q.pop(0)
+            if v not in checked:
+                checked.append(v)
+                if 0 <= v[0] < self.original_image.shape[0] \
+                        and 0 <= v[1] < self.original_image.shape[1] \
+                        and self.original_image[v[0]][v[1]] == MAZE_COLOR:
+                    return v
+                if (v[0], v[1] - 1) not in checked:
+                    q.append((v[0], v[1] - 1))
+                if (v[0] + 1, v[1]) not in checked:
+                    q.append((v[0] + 1, v[1]))
+                if (v[0], v[1] + 1) not in checked:
+                    q.append((v[0], v[1] + 1))
+                if (v[0] - 1, v[1]) not in checked:
+                    q.append((v[0] - 1, v[1]))
         return self.get_current_point()
 
     def get_current_point(self):
         return self.aruco.aruco_info[Config.CAR_ID]['centerY'], self.aruco.aruco_info[Config.CAR_ID]['centerX']
+
+    def get_forward_point(self):
+        return self.aruco.aruco_info[Config.FORWARD_CAR_ID]['centerY'], self.aruco.aruco_info[Config.FORWARD_CAR_ID]['centerX']
+
+
+    def get_direction_vector(self):
+        forward = self.aruco.aruco_info[Config.FORWARD_CAR_ID]
+        backward = self.aruco.aruco_info[Config.BACKWARD_CAR_ID]
+
+        return forward['centerY'] - backward['centerY'], forward['centerX'] - backward['centerX']

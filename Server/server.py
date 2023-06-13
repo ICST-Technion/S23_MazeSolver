@@ -5,108 +5,31 @@ import logging
 import asyncio
 import websockets
 import math
-
+import cv2
 from config import Config
-
+import base64
+import json
 
 def dist(c1, c2):
     return math.sqrt((c1[0] - c2[0]) ** 2 +
               (c1[1] - c2[1]) ** 2)
 
 class DirectionsServer:
-    def __init__(self, ip, port, maze, calibration_controller):
+    def __init__(self, ip, port, maze):
         self.stopped = True
         self.ip = ip
         self.port = port
-        self.directions = []
         self.lock = threading.Lock()
-        self.request_counter = 1
         self.maze = maze
-        self.calibration_controller = calibration_controller
-        self.last_action = 'UP'
-        self.update_directions()
-        # added
-        self.movement_coef = 1
 
-        self.last_coords = self.maze.get_current_coords()
-        # where we expect vehicle to be, based only on how much we told vehicle to move and not on its actual movement
-        self.expected_movement = 0
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
         logging.info("started new server instance")
 
-    def correct_parameter(self):
-        self.movement_coef += Config.learning_rate*self.calibration_controller.error
 
-    def get_movement_measures(self, current_coords):
-        num_expected = self.expected_movement
-        num_traveled = dist(self.last_coords, current_coords)
-        return num_traveled, num_expected
-
-    def get_next_direction2(self):
-        action = self.directions[0][0]
-        if action == self.last_action:
-            direction = self.directions.pop(0)
-            self.last_action = direction[0]
-            return Config.actions_to_num["UP"], self.movement_coef*int(direction[1])
-        else:
-            direction = self.directions[0]
-            if self.last_action == "UP":
-                if direction[0] == "RIGHT":
-                    self.last_action = "RIGHT"
-                    return Config.actions_to_num["RIGHT"],  self.movement_coef*680
-                if direction[0] == "LEFT":
-                    self.last_action = "LEFT"
-                    return Config.actions_to_num["LEFT"], self.movement_coef* 680
-
-            if self.last_action == "RIGHT":
-                if direction[0] == "UP":
-                    self.last_action = "UP"
-                    return Config.actions_to_num["LEFT"],  self.movement_coef*680
-                if direction[0] == "DOWN":
-                    self.last_action = "DOWN"
-                    return Config.actions_to_num["RIGHT"],  self.movement_coef*680
-
-            if self.last_action == "LEFT":
-                if direction[0] == "UP":
-                    self.last_action = "UP"
-                    return Config.actions_to_num["RIGHT"],  self.movement_coef*680
-                if direction[0] == "DOWN":
-                    self.last_action = "DOWN"
-                    return Config.actions_to_num["LEFT"],  self.movement_coef*680
-
-            if self.last_action == "DOWN":
-                if direction[0] == "RIGHT":
-                    self.last_action = "RIGHT"
-                    return Config.actions_to_num["LEFT"],  self.movement_coef*680
-                if direction[0] == "LEFT":
-                    self.last_action = "LEFT"
-                    return Config.actions_to_num["RIGHT"],  self.movement_coef*680
-
-
-    def get_next_direction(self):
-        action = self.directions[0][0]
-        angle = self.maze.get_car_angle()
-        if (abs(angle - Config.angle_map[action])) > Config.rotation_sensitivity:
-            diff = angle - Config.angle_map[action]
-            rotate_dir = "LEFT" if diff < 0 else "RIGHT"
-            if abs(diff) > 180:
-                if rotate_dir == "LEFT":
-                    rotate_dir = "RIGHT"
-                    diff = 360 - abs(diff)
-                else:
-                    rotate_dir = "LEFT"
-                    diff = 360 - abs(diff)
-            return Config.actions_to_num[rotate_dir], int(abs(diff))
-        direction = self.directions.pop(0)
-        return Config.actions_to_num["UP"],  self.movement_coef*int(direction[1])
-
-    def update_directions(self):
-        logging.debug("updating directions")
+    def updating_started(self):
         self.lock.acquire()
-        self.directions = self.maze.update()
-        while self.directions == -1:
-            self.directions = self.maze.update()
-        # get directions logic
+
+    def finished_updating(self):
         self.lock.release()
 
     def parse_message(self, data):
@@ -114,24 +37,28 @@ class DirectionsServer:
         src_dev = data[1:2]
         dst_dev = data[2:3]
         direction = data[3:4]
-        msg_data = data[4:8]
+        l = data[4:8]
+        r = data[8:12]
+        time = data[12:16]
+
         return {"opcode": int.from_bytes(opcode, byteorder="little"),
                 "src_dev": int.from_bytes(src_dev, byteorder="little"),
                 "dst_dev": int.from_bytes(dst_dev, byteorder="little"),
                 "direction": int.from_bytes(direction, byteorder="little"),
-                "data": int.from_bytes(msg_data, byteorder="little")
+                "time": int.from_bytes(time, byteorder="little"),
+                "left_speed": int.from_bytes(l, byteorder="little"),
+                "right_speed": int.from_bytes(r, byteorder="little")
                 }
 
-    def create_message(self, opcode, src, dst, dir, data):
+    def create_message(self, opcode, src, dst, dir, l, r, time):
         msg = opcode.to_bytes(1, "little") + src.to_bytes(1, "little") + dst.to_bytes(1, "little")\
-              + dir.to_bytes(1, "little") + data.to_bytes(4, "little")
+              + dir.to_bytes(1, "little") \
+              + l.to_bytes(4, "little") + r.to_bytes(4, "little") + time.to_bytes(4, "little")
         return msg
 
     def start_server(self):
-        server_thread = threading.Thread(target=self.run_server)
-        server_thread.start()
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(5000)
+            s.settimeout(10000)
             # start up server
             try:
                 s.bind((self.ip, self.port))
@@ -140,81 +67,90 @@ class DirectionsServer:
                 logging.error(f"Server startup error: {repr(e)}")
 
             while True:
-                conn, addr = s.accept()
-                with conn:
-                    logging.debug(f"Connected by {addr}")
-                    while True:
-                        # receive data from bot
-                        data = conn.recv(1024)
-                        parsed_message = self.parse_message(data)
-
-                        if not data or parsed_message['opcode'] not in list(Config.opcodes.values()):
-                            continue
-
-                        if parsed_message['opcode'] == Config.opcodes['DIRECTION_REQUEST']:
-                            if self.stopped:
-                                logging.debug("server stopped")
-                                next_direction = (Config.stay, 0)
-                            else:
-                                ###### added
-                                current_coords = self.maze.get_current_coords()
-                                # vehicle moved
-                                if dist(self.last_coords, current_coords) > Config.moved_sensitivity:
-                                    num_t, num_e = self.get_movement_measures(current_coords)
-                                    if self.calibration_controller.to_calibrate(num_t, num_e):
-                                        # calibrate
-                                        self.correct_parameter()
-                                self.last_coords = current_coords
-                                ######
-                                # every 5 requests update directions
-                                ######## experimental, if error was bigger than some thresh update maze
-                                if self.calibration_controller.error_diff > Config.error_update_thresh:
-                                    self.update_directions()
-                                    self.request_counter += 1
-                                    t = threading.Thread(target=self.update_directions)
-                                    t.start()
-                                    time.sleep(1)
-
-                                # if recalculating directions tell bot to stay
-                                if self.lock.locked():
-                                    logging.debug("updating in progress")
-                                    next_direction = (Config.stay, 0)
-                                else:  # get next direction
-                                    self.request_counter += 1
-                                    next_direction = self.get_next_direction2()
-                                    self.expected_movement = next_direction[1]
-
-
-                            msg = self.create_message(Config.opcodes['DIRECTION_MSG'],
-                                                      Config.dev_codes['RPI'],
-                                                      Config.dev_codes['ESP_32'],
-                                                      next_direction[0],
-                                                      next_direction[1]
-                                                      )
-                            # send data to bot and log to console
-                            conn.sendall(msg)
-                            logging.debug(f"sent direction: {Config.directions_map[next_direction[0]]}"
-                                          f" ,{next_direction[1]}")
+                try:
+                    logging.debug(f"Server Listening")
+                    conn, addr = s.accept()
+                    with conn:
+                        logging.debug(f"Connected by {addr}")
+                        while True:
+                            # receive data from bot
                             data = conn.recv(1024)
                             parsed_message = self.parse_message(data)
-                            if parsed_message['opcode'] == Config.opcodes['ESP32_ACK']:
-                                logging.debug(f"Received ACK")
+
+                            if not data or parsed_message['opcode'] not in list(Config.opcodes.values()):
+                                continue
+
+                            if parsed_message['opcode'] == Config.opcodes['DIRECTION_REQUEST']:
+
+                                if self.maze.is_finished():
+                                    logging.debug("server stopped")
+                                    next_direction = (Config.finished, 0, 0, 0)
+                                elif self.maze.is_stopped():
+                                    logging.debug("server stopped")
+                                    next_direction = (Config.stay, 0, 0, 0)
+                                else:
+                                    # recalculate coefficient and confidence from last movement
+                                    self.maze.update_step()
+                                    if self.lock.locked():
+                                        logging.debug("updating in progress")
+                                        next_direction = (Config.stay, 0, 0, 0)
+                                    else:  # get next direction
+                                        next_direction = self.maze.get_dynamic_next_direction()
+                                msg = self.create_message(Config.opcodes['DIRECTION_MSG'],
+                                                          Config.dev_codes['RPI'],
+                                                          Config.dev_codes['ESP_32'],
+                                                          next_direction[0],
+                                                          next_direction[1],
+                                                          next_direction[2],
+                                                          next_direction[3]
+                                                          )
+                                # send data to bot and log to console
+                                conn.sendall(msg)
+                                print(f"sent direction: {Config.directions_map[next_direction[0]]}"
+                                              f" ,{next_direction[1]}, {next_direction[2], next_direction[3]}")
+                                data = conn.recv(1024)
+                                parsed_message = self.parse_message(data)
+                                if parsed_message['opcode'] == Config.opcodes['ESP32_ACK']:
+                                    logging.debug(f"Received ACK")
+                except Exception as e:
+                    print(e)
+
+
+class ControlServer:
+    def __init__(self, ip, port, maze):
+        self.ip = ip
+        self.port = port
+        self.maze = maze
+        logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
+        logging.info("started new websocket server instance")
+        print("started new websocket server instance")
+
+
+    def start_server(self):
+        print("starting control server")
+        self.run_server()
 
     async def handle_client(self, websocket, path):
-        # Handle incoming messages from the client
         async for message in websocket:
-            print(f"Received message: {message}")
             if message == "start":
-                self.stopped = False
-            if message == "stop":
-                self.stopped = True
-            if message == "reset":
-                self.request_counter = 0
-                self.update_directions()
+                self.maze.start_solver()
 
+            if message == "stop":
+                self.maze.stop_solver()
+
+            if message == "reset":
+                self.maze.restart_maze()
+
+            if message == "status":
+                status = {"type": "status", "status": self.maze.get_status()}
+                await websocket.send(json.dumps(status))
+                success, binary_data = cv2.imencode('.jpg', self.maze.get_status_image())
+                base64_data = base64.b64encode(binary_data).decode('utf-8')
+                status = {"type": "maze", "maze": base64_data}
+                await websocket.send(json.dumps(status))
 
     async def start_webserver(self):
-        async with websockets.serve(self.handle_client, Config.host, Config.webserver_port):
+        async with websockets.serve(self.handle_client, self.ip, self.port):
             print("WebSocket server started")
             await asyncio.Future()  # Run indefinitely
 
@@ -222,6 +158,7 @@ class DirectionsServer:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(self.start_webserver())
+
 
 if __name__ == "__main__":
     pass

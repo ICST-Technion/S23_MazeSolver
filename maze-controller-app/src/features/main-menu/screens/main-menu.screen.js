@@ -1,6 +1,7 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect } from "react";
 import { View, Image } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import Toast from "react-native-root-toast";
 import styled from "styled-components/native";
 import { Button } from "react-native-paper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -11,6 +12,7 @@ import {
   sendStart,
   sendStop,
   sendReset,
+  sendTakePic,
 } from "../../../services/udp-controls/udp-controls.service";
 import { UDPContext } from "../../../services/udp-controls/udp-controls.context";
 
@@ -50,8 +52,15 @@ const ButtonsContainer = styled.View`
 `;
 
 export const MainMenu = ({ navigation }) => {
-  const { socket } = useContext(UDPContext);
-
+  const { socket, updateStatus, status } = useContext(UDPContext);
+  useEffect(() => {
+    if (socket !== null) {
+      const interval = setInterval(() => {
+        updateStatus();
+      }, 1500);
+      return () => clearInterval(interval);
+    }
+  }, [socket]);
   return (
     <ScreenContainer>
       <SafeArea>
@@ -87,17 +96,28 @@ export const MainMenu = ({ navigation }) => {
                 Stop
               </Button>
             </Spacer>
-
-            <Button
-              icon="replay"
-              mode="contained"
-              color="black"
-              onPress={() => {
-                sendReset(socket);
-              }}
-            >
-              Restart
-            </Button>
+            <Spacer position={"bottom"} size={"large"}>
+              <Button
+                icon="replay"
+                mode="contained"
+                color="black"
+                onPress={() => {
+                  if (status["running"]) {
+                    Toast.show("Please stop the solver first", {
+                      duration: Toast.durations.LONG,
+                      backgroundColor: "red", // Change the background color to red
+                      textColor: "white",
+                      animation: true,
+                      hideOnPress: true,
+                    });
+                  } else {
+                    sendReset(socket);
+                  }
+                }}
+              >
+                Recalculate
+              </Button>
+            </Spacer>
           </ButtonsContainer>
         </FunctionalContainer>
       </SafeArea>

@@ -1,40 +1,40 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import styled from "styled-components/native";
 import {
   TouchableOpacity,
   Keyboard,
   TouchableWithoutFeedback,
 } from "react-native";
-import { List, Avatar } from "react-native-paper";
+import { View } from "react-native";
 
 import { Text } from "../../components/typography/text.component";
 import { SafeArea } from "../../components/utility/safe-area.component";
 import { Spacer } from "../../components/spacer/spacer.component";
-import { ConnectionIndicator } from "../../components/network/connection-indicator.component";
+import { StatusIndicator } from "../../components/network/connection-indicator.component";
 import { ActivityIndicator, Colors } from "react-native-paper";
-import Toast from "react-native-root-toast";
 
 import { Button, TextInput } from "react-native-paper";
 import { UDPContext } from "../../services/udp-controls/udp-controls.context";
 import { checkConnection } from "../../services/udp-controls/udp-controls.service";
 
-export const AccountBackground = styled.View`
+export const SettingsBlockBackground = styled.View`
   flex: 1;
   align-items: center;
   justify-content: center;
 `;
 
-export const AccountCover = styled.View`
+export const SettingsBlockCover = styled.View`
   position: absolute;
   width: 100%;
   height: 100%;
   background-color: rgba(255, 255, 255, 0.3);
 `;
 
-export const AccountContainer = styled.View`
+export const SettingsBlockContainer = styled.View`
   background-color: rgba(255, 255, 255, 0.7);
   padding: ${(props) => props.theme.space[4]};
   margin-top: ${(props) => props.theme.space[2]};
+  width: 80%;
 `;
 
 export const NetworkSetButton = styled(Button)`
@@ -75,51 +75,68 @@ export const SettingsScreen = ({ navigation }) => {
     setServerPort,
     serverIp,
     serverPort,
-    isConnected,
     attemptConnection,
+    keyToText,
+    status,
   } = useContext(UDPContext);
   const [port, setPort] = useState(serverPort);
   const [ip, setIp] = useState(serverIp);
+
+  const SECOND_MS = 1000;
+
   return (
     <TouchableWithoutFeedback onPress={handleScreenPress}>
-      <AccountBackground>
-        <AccountCover />
+      <SettingsBlockBackground>
+        <SettingsBlockCover />
         <Title>Network Settings</Title>
-        <AccountContainer>
-          <NetworkInput
-            label="Server IP"
-            value={ip}
-            autoCapitalize="none"
-            onChangeText={(u) => setIp(u)}
-          />
-          <Spacer size="large">
+        <Spacer position={"bottom"} size={"large"}>
+          <SettingsBlockContainer>
             <NetworkInput
-              label="Port"
-              value={port}
+              label="Server IP"
+              value={ip}
               autoCapitalize="none"
-              onChangeText={(p) => setPort(p)}
+              keyboardType="numeric"
+              onChangeText={(u) => setIp(u)}
             />
-          </Spacer>
+            <Spacer size="large">
+              <NetworkInput
+                label="Port"
+                value={port}
+                keyboardType="numeric"
+                autoCapitalize="none"
+                onChangeText={(p) => setPort(p)}
+              />
+            </Spacer>
 
-          <Spacer size="large">
-            <NetworkSetButton
-              icon="wifi"
-              mode="contained"
-              onPress={() => {
-                setServerIp(ip);
-                setServerPort(port);
-                Keyboard.dismiss();
-                attemptConnection();
-              }}
-            >
-              Set and Check
-            </NetworkSetButton>
-          </Spacer>
-          <Spacer>
-            <ConnectionIndicator isConnected={isConnected} />
-          </Spacer>
-        </AccountContainer>
-      </AccountBackground>
+            <Spacer size="large">
+              <NetworkSetButton
+                icon="wifi"
+                mode="contained"
+                onPress={() => {
+                  setServerIp(ip);
+                  setServerPort(port);
+                  Keyboard.dismiss();
+                  attemptConnection();
+                }}
+              >
+                Connect
+              </NetworkSetButton>
+            </Spacer>
+          </SettingsBlockContainer>
+        </Spacer>
+        <Title>Status</Title>
+        <SettingsBlockContainer>
+          {Object.keys(status).map((item, idx) => {
+            return (
+              <StatusIndicator
+                key={idx}
+                label={keyToText[item]}
+                isOn={status[item]}
+              />
+            );
+          })}
+        </SettingsBlockContainer>
+      </SettingsBlockBackground>
     </TouchableWithoutFeedback>
   );
 };

@@ -1,14 +1,25 @@
-import React, { useRef, useState, useEffect } from "react";
-import { PanResponder, View, StyleSheet, Dimensions } from "react-native";
-import Svg, { Image, Polyline, Defs, ClipPath, Rect } from "react-native-svg";
+import React, { useRef, useState, useEffect, useContext } from "react";
+import {
+  PanResponder,
+  View,
+  StyleSheet,
+  Dimensions,
+  Image,
+} from "react-native";
+import Svg, { Polyline, Defs, ClipPath, Rect } from "react-native-svg";
 import styled from "styled-components";
 import { SafeArea } from "../../../components/utility/safe-area.component";
+import { UDPContext } from "../../../services/udp-controls/udp-controls.context";
 
-const MazeContainer = styled.View`
+const MazeContainer = styled(SafeArea)`
   justify-content: center;
   align-items: center;
-  height: 350px;
-  width: 350px;
+  flex: 1;
+`;
+
+const MazeImage = styled.Image`
+  height: 100%;
+  width: 100%;
 `;
 
 const DrawingContainer = styled.View`
@@ -17,8 +28,15 @@ const DrawingContainer = styled.View`
   flex: 1;
 `;
 
-const GesturePath = ({ path, color, containerWidth, containerHeight }) => {
+const GesturePath = ({
+  path,
+  color,
+  containerWidth,
+  containerHeight,
+  mazeImage,
+}) => {
   const { width, height } = Dimensions.get("window");
+
   const points = path.map((p) => `${p.x},${p.y}`).join(" ");
   return (
     <Svg>
@@ -27,7 +45,7 @@ const GesturePath = ({ path, color, containerWidth, containerHeight }) => {
           <Rect x="0" y="0" width={containerWidth} height={containerHeight} />
         </ClipPath>
       </Defs>
-      <Image href={require("../../../../assets/pmaze.jpg")} />
+      <Image source={{ uri: mazeImage }} alt="WebSocket Image" />
       <Polyline points={points} fill="none" stroke={color} strokeWidth="3" />
     </Svg>
   );
@@ -63,6 +81,7 @@ export const MazeScreen = () => {
   const [path, setPath] = useState([]);
   const [containerWidth, setContainerWidth] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
+  const { mazeImage } = useContext(UDPContext);
 
   const handleLayout = () => {
     const { width, height } = Dimensions.get("window");
@@ -71,16 +90,26 @@ export const MazeScreen = () => {
   };
 
   return (
-    <DrawingContainer>
-      <MazeContainer onLayout={handleLayout}>
-        <GesturePath
-          path={path}
-          color="green"
-          containerWidth={containerWidth}
-          containerHeight={containerHeight}
-        />
-        <GestureRecorder onPathChanged={setPath} />
-      </MazeContainer>
-    </DrawingContainer>
+    <MazeContainer>
+      <MazeImage
+        source={{
+          uri: mazeImage,
+        }}
+        resizeMode="contain"
+      />
+    </MazeContainer>
+
+    // <DrawingContainer>
+    //   <MazeContainer onLayout={handleLayout}>
+    //     <GesturePath
+    //       path={path}
+    //       color="green"
+    //       containerWidth={containerWidth}
+    //       containerHeight={containerHeight}
+    //       mazeImage={mazeImage}
+    //     />
+    //     <GestureRecorder onPathChanged={setPath} />
+    //   </MazeContainer>
+    // </DrawingContainer>
   );
 };

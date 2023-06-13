@@ -64,19 +64,28 @@ class MazeSearchEnv(object):
         print('end: ', end_row, end_col)
         start_row, start_col = self.__data_obj.get_start_point()
         print('start: ', start_row, start_col)
+        print("current:", self.__data_obj.get_current_point())
         self.__final_state = MazeState(end_row, end_col)
         self.__cost = 1
 
+    def get_image(self):
+        return self.__data_obj.data
+
+    def get_warped_image(self):
+        return self.__data_obj.warped_image
 
     def get_car_angle(self):
         return self.__data_obj.get_car_angle()
 
-    def load_image(self, path, from_arr=False):
-        self.__data_obj.load_aruco_image(path, from_arr=from_arr)
+    def load_image(self, path):
+        self.__data_obj.load_aruco_image(path)
+
+    def load_initial_image(self, img):
+        self.__data_obj.load_initial_image(img)
+
 
     def get_cost(self, state, action):
         return self.costs[action]
-        return self.__cost
 
     def is_final_state(self, state):
         return state == self.__final_state
@@ -88,8 +97,17 @@ class MazeSearchEnv(object):
         start_row, start_col = self.__data_obj.get_start_point()
         return MazeState(start_row, start_col)
 
+    def get_end_point(self):
+        return self.__data_obj.get_end_point()
+
+    def get_direction_vector(self):
+        return self.__data_obj.get_direction_vector()
+
     def get_current_coords(self):
         return self.__data_obj.get_current_point()
+
+    def get_forward_coords(self):
+        return self.__data_obj.get_forward_point()
 
     def is_legal_state(self, row, col):
         if row < 0 or row >= self.__data_obj.get_max_row():
@@ -128,6 +146,16 @@ class MazeSearchEnv(object):
         for action in actions:
             curr_row = curr_row + self.actions[action][0]
             curr_col = curr_col + self.actions[action][1]
+            path.append((curr_row, curr_col))
+        return path
+
+    def actions_to_cords_with_weight(self, actions):
+        path = []
+        curr_row, curr_col = self.get_initial_state().get_value()
+        path.append((curr_row, curr_col))
+        for action, weight in actions:
+            curr_row = curr_row + weight*self.actions[action][0]
+            curr_col = curr_col + weight*self.actions[action][1]
             path.append((curr_row, curr_col))
         return path
 
