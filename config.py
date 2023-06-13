@@ -23,7 +23,7 @@ class Config:
     # angle PID params
     a_kp = 3.2
     a_ki = .1
-    a_kd = 3
+    a_kd = 2
 
     # bot
     right = 1

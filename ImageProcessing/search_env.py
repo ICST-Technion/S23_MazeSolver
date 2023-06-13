@@ -71,6 +71,9 @@ class MazeSearchEnv(object):
     def get_image(self):
         return self.__data_obj.data
 
+    def get_warped_image(self):
+        return self.__data_obj.warped_image
+
     def get_car_angle(self):
         return self.__data_obj.get_car_angle()
 
@@ -93,6 +96,9 @@ class MazeSearchEnv(object):
     def get_initial_state(self):
         start_row, start_col = self.__data_obj.get_start_point()
         return MazeState(start_row, start_col)
+
+    def get_end_point(self):
+        return self.__data_obj.get_end_point()
 
     def get_direction_vector(self):
         return self.__data_obj.get_direction_vector()

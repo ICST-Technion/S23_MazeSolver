@@ -132,6 +132,7 @@ class MazeManager(object):
         self.cords = []
         self.is_rotating = False
         self.last_turn = [0, 0]
+        self.finished = False
         self.status = {
             "connection": True,
             "path_found": False,
@@ -145,6 +146,8 @@ class MazeManager(object):
         return self.maze_env.get_image()
 
     def get_status_image(self):
+        if self.maze_env:
+            return self.maze_env.get_warped_image()
         return self.cam.retrieve_image()
 
     def is_stopped(self):
@@ -174,10 +177,12 @@ class MazeManager(object):
         while self.stopped:
             time.sleep(1)
         # loads maze with aruco
+        self.status['calculating_path'] = True
         self._mi.load_aruco_image(self.cam.retrieve_image())
         self.maze_env = MazeSearchEnv(self._mi)
         self.agent = WeightedAStarAgent(self.maze_env, 0.5, Heuristic1())
         self.update_directions()
+        self.status['calculating_path'] = False
 
     def update_directions(self):
         changed_stop = False
@@ -202,10 +207,13 @@ class MazeManager(object):
         return current_cords
 
     def restart_maze(self):
+        self.finished = False
+        self.status['calculating_path'] = True
         self._mi.load_aruco_image(self.cam.retrieve_image())
         self.maze_env = MazeSearchEnv(self._mi)
         self.agent = WeightedAStarAgent(self.maze_env, 0.5, Heuristic1())
         self.update_directions()
+        self.status['calculating_path'] = False
 
     def get_forward_coords(self):
         self.reload_image()
@@ -323,6 +331,8 @@ class MazeManager(object):
             last_loc = self.get_last_coords()
             current_location = self.get_current_coords()
             current_forward_location = self.get_forward_coords()
+            if dist(self.maze_env.get_end_point(), current_forward_location) < 100:
+                self.finished = True
             # if rotating
             if self.is_rotating:
                 rot_vec = (self.cords[0][0] - self.last_turn[0], self.cords[0][1]-self.last_turn[1])
@@ -366,6 +376,9 @@ class MazeManager(object):
 
         else:
             self.stopped = True
+
+    def is_finished(self):
+        return self.finished
 
 
 if __name__ == "__main__":

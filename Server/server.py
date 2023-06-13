@@ -21,6 +21,7 @@ class DirectionsServer:
         self.port = port
         self.lock = threading.Lock()
         self.maze = maze
+
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
         logging.info("started new server instance")
 
@@ -80,7 +81,11 @@ class DirectionsServer:
                                 continue
 
                             if parsed_message['opcode'] == Config.opcodes['DIRECTION_REQUEST']:
-                                if self.maze.is_stopped():
+
+                                if self.maze.is_finished():
+                                    logging.debug("server stopped")
+                                    next_direction = (Config.finished, 0, 0, 0)
+                                elif self.maze.is_stopped():
                                     logging.debug("server stopped")
                                     next_direction = (Config.stay, 0, 0, 0)
                                 else:

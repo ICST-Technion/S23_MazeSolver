@@ -286,6 +286,7 @@ class MazeImage(object):
         self.data, warped_orig, self.warp_matrix = None, None, None
         self.original_image = None
         self.aruco = None
+        self.warped_image = None
 
     def load_initial_image(self, img):
         self.rotation = get_rotation_to_straighten(img)
@@ -296,11 +297,15 @@ class MazeImage(object):
 
     def load_aruco_image(self, img):
         data = warp_image_saved_matrix(img, self.warp_matrix)
+        self.warped_image = np.copy(data)
         self.aruco = ArucoData(data, self.aruco_dict)
         self.data = np.copy(self.original_image)
         # fill_aruco(self.data, self.aruco.aruco_info[Config.CAR_ID]['corners'])
         fill_aruco(self.data, self.aruco.aruco_info[Config.END_ID]['corners'])
         cv2.imwrite("arucoImage.jpg", self.data)
+
+    def get_warped_image(self):
+        return self.warped_image
 
     def get_car_angle(self):
         return self.aruco.aruco_info[Config.CAR_ID]['rotation']
