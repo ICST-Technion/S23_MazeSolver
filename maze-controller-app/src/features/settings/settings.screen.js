@@ -12,7 +12,6 @@ import { SafeArea } from "../../components/utility/safe-area.component";
 import { Spacer } from "../../components/spacer/spacer.component";
 import { StatusIndicator } from "../../components/network/connection-indicator.component";
 import { ActivityIndicator, Colors } from "react-native-paper";
-import Toast from "react-native-root-toast";
 
 import { Button, TextInput } from "react-native-paper";
 import { UDPContext } from "../../services/udp-controls/udp-controls.context";

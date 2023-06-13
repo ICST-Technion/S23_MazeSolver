@@ -11,15 +11,15 @@ import styled from "styled-components";
 import { SafeArea } from "../../../components/utility/safe-area.component";
 import { UDPContext } from "../../../services/udp-controls/udp-controls.context";
 
-const MazeContainer = styled.View`
+const MazeContainer = styled(SafeArea)`
   justify-content: center;
   align-items: center;
   flex: 1;
 `;
 
 const MazeImage = styled.Image`
-  height: 350px;
-  width: 350px;
+  height: 100%;
+  width: 100%;
 `;
 
 const DrawingContainer = styled.View`
@@ -95,6 +95,7 @@ export const MazeScreen = () => {
         source={{
           uri: mazeImage,
         }}
+        resizeMode="contain"
       />
     </MazeContainer>
 

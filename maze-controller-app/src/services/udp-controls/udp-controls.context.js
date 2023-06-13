@@ -4,7 +4,7 @@ import { connectToWebSocket, requestStatus } from "./udp-controls.service";
 export const UDPContext = createContext();
 export const UDPContextProvider = ({ children }) => {
   const [serverIp, setServerIp] = useState("192.168.5.1");
-  const [serverPort, setServerPort] = useState("8080");
+  const [serverPort, setServerPort] = useState("7000");
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [status, setStatus] = useState({
