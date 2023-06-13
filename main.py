@@ -22,17 +22,22 @@ def dist(c1, c2):
                      (c1[1] - c2[1]) ** 2)
 
 
+# change dist here to be L1 not L2
 def get_distance_left(current_loc, src, dst):
     if src[0] == dst[0]:
         if min(src[1], dst[1]) <= current_loc[1] <= max(dst[1], src[1]):
-            return dist(current_loc, dst)
+            return abs(dst[1] - current_loc[1])
+            # return dist(current_loc, dst)
         else:
-            return -dist(current_loc, dst)
+            return -abs(dst[1] - current_loc[1])
+            # return -dist(current_loc, dst)
     else:
         if min(src[0], dst[0]) <= current_loc[0] <= max(src[0], dst[0]):
-            return dist(current_loc, dst)
+            return abs(dst[0] - current_loc[0])
+            # return dist(current_loc, dst)
         else:
-            return -dist(current_loc, dst)
+            return -abs(dst[0] - current_loc[0])
+            # return -dist(current_loc, dst)
 
 
 def calculate_cos_theta(next_direction, current_direction):
@@ -139,6 +144,9 @@ class MazeManager(object):
     def get_image(self):
         return self.maze_env.get_image()
 
+    def get_status_image(self):
+        return self.cam.retrieve_image()
+
     def is_stopped(self):
         return self.stopped
 
@@ -192,6 +200,12 @@ class MazeManager(object):
         self.reload_image()
         current_cords = self.maze_env.get_current_coords()
         return current_cords
+
+    def restart_maze(self):
+        self._mi.load_aruco_image(self.cam.retrieve_image())
+        self.maze_env = MazeSearchEnv(self._mi)
+        self.agent = WeightedAStarAgent(self.maze_env, 0.5, Heuristic1())
+        self.update_directions()
 
     def get_forward_coords(self):
         self.reload_image()
@@ -274,7 +288,6 @@ class MazeManager(object):
             try:
                 rot_vec = (self.cords[0][0] - self.last_turn[0], self.cords[0][1]-self.last_turn[1])
                 err = calculate_cos_theta(rot_vec, self.maze_env.get_direction_vector())
-                print(f"rotation error: {err}")
                 amount = self.robot.get_rotation_length(err)
                 if amount > 0:
                     return Config.actions_to_num["LEFT"], Config.rotation_speed, Config.rotation_speed, abs(int(amount))
@@ -304,7 +317,7 @@ class MazeManager(object):
                 return Config.actions_to_num["DOWN"], int(speed_r), int(speed_l), int(self.movement_coef * amount)
 
     def update_step(self):
-        # if we have directions left
+        # if we have directions left and not in stand by mode
         if self.directions:
             # gets current and last location and updates current location
             last_loc = self.get_last_coords()
@@ -320,6 +333,13 @@ class MazeManager(object):
                     # starting forward movement so reset old errors
                     self.robot.reset_dir_pid()
             else:
+                rot_vec = (self.cords[0][0] - self.last_turn[0], self.cords[0][1] - self.last_turn[1])
+                err = calculate_cos_theta(rot_vec, self.maze_env.get_direction_vector())
+                # TODO check this
+                if abs(err) > 145:
+                    self.is_rotating = True
+                    self.robot.reset_angle_pid()
+                    return
                 # update sideways position
                 err = distance_from_line(self.last_turn, self.cords[0], current_forward_location)
                 if err < 0:
@@ -335,7 +355,6 @@ class MazeManager(object):
                     temp = (self.directions[0][0], get_distance_left(current_location, self.last_turn, self.cords[0]))
                     self.directions[0] = temp
                     # if we moved past or to the point we needed
-                    # TODO: consider checking if really negative then recalculate maze path
                     if abs(self.directions[0][1]) <= Config.accuracy_threshold:
                         self.directions.pop(0)
                         self.last_turn = self.cords.pop(0)
@@ -344,8 +363,9 @@ class MazeManager(object):
                         # just started rotating so reset old errors
                         self.robot.reset_angle_pid()
                     self.update_parameters(num_expected, num_traveled, current_location, last_loc)
+
         else:
-            self.update_directions()
+            self.stopped = True
 
 
 if __name__ == "__main__":

@@ -129,26 +129,19 @@ class ControlServer:
         async for message in websocket:
             if message == "start":
                 self.maze.start_solver()
-                # if started send app current image using
-                # success, binary_data = cv2.imencode('.jpg', self.maze.get_image())
-                # base64_data = base64.b64encode(binary_data).decode('utf-8')
-                # status = {"type": "maze", "maze": base64_data}
-                # await websocket.send(json.dumps(status))
 
             if message == "stop":
                 self.maze.stop_solver()
-            if message == "reset":
-                self.maze.update_directions()
 
-            if message == "pic":
-                # self.maze.reload_initial_image()
-                success, binary_data = cv2.imencode('.jpg', self.maze.get_image())
-                base64_data = base64.b64encode(binary_data).decode('utf-8')
-                status = {"type": "maze", "maze": base64_data}
-                await websocket.send(json.dumps(status))
+            if message == "reset":
+                self.maze.restart_maze()
 
             if message == "status":
                 status = {"type": "status", "status": self.maze.get_status()}
+                await websocket.send(json.dumps(status))
+                success, binary_data = cv2.imencode('.jpg', self.maze.get_status_image())
+                base64_data = base64.b64encode(binary_data).decode('utf-8')
+                status = {"type": "maze", "maze": base64_data}
                 await websocket.send(json.dumps(status))
 
     async def start_webserver(self):
