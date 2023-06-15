@@ -1,19 +1,63 @@
 import React, { useRef, useState, useEffect, useContext } from "react";
+import Toast from "react-native-root-toast";
 import {
   PanResponder,
+  TouchableOpacity,
   View,
   StyleSheet,
   Dimensions,
   Image,
 } from "react-native";
-import Svg, { Polyline, Defs, ClipPath, Rect } from "react-native-svg";
 import styled from "styled-components";
 import { SafeArea } from "../../../components/utility/safe-area.component";
 import { UDPContext } from "../../../services/udp-controls/udp-controls.context";
+import { TakePictureModal } from "../components/modal.component";
+import { sendTakePic } from "../../../services/udp-controls/udp-controls.service";
 
-const MazeContainer = styled(SafeArea)`
+const CircleWithInnerRing = () => {
+  return (
+    <Container>
+      <Circle />
+      <InnerRing />
+    </Container>
+  );
+};
+
+const Container = styled(View)`
   justify-content: center;
   align-items: center;
+`;
+
+const Circle = styled(View)`
+  border-radius: 90px;
+  width: 75px;
+  height: 75px;
+  background-color: black;
+`;
+
+const InnerRing = styled(View)`
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-radius: 80px;
+  border-width: 3px;
+  border-color: white;
+`;
+
+const MazeContainer = styled(View)`
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+`;
+
+const ButtonContainer = styled(View)`
+  padding: 5px;
+  overflow: hidden;
+  border-radius: 90px;
+  flex: 0.25;
+`;
+
+const ScreenContainer = styled(SafeArea)`
   flex: 1;
 `;
 
@@ -22,66 +66,12 @@ const MazeImage = styled.Image`
   width: 100%;
 `;
 
-const DrawingContainer = styled.View`
-  justify-content: center;
-  align-items: center;
-  flex: 1;
-`;
-
-const GesturePath = ({
-  path,
-  color,
-  containerWidth,
-  containerHeight,
-  mazeImage,
-}) => {
-  const { width, height } = Dimensions.get("window");
-
-  const points = path.map((p) => `${p.x},${p.y}`).join(" ");
-  return (
-    <Svg>
-      <Defs>
-        <ClipPath id="imageClip">
-          <Rect x="0" y="0" width={containerWidth} height={containerHeight} />
-        </ClipPath>
-      </Defs>
-      <Image source={{ uri: mazeImage }} alt="WebSocket Image" />
-      <Polyline points={points} fill="none" stroke={color} strokeWidth="3" />
-    </Svg>
-  );
-};
-
-const GestureRecorder = ({ onPathChanged }) => {
-  const pathRef = useRef([]);
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        pathRef.current = [];
-      },
-      onPanResponderMove: (event) => {
-        pathRef.current.push({
-          x: event.nativeEvent.locationX,
-          y: event.nativeEvent.locationY,
-        });
-        // Uncomment the next line to draw the path as the user is performing the touch. (A new array must be created so setState recognises the change and re-renders the App)
-        onPathChanged([...pathRef.current]);
-      },
-      onPanResponderRelease: () => {
-        onPathChanged([...pathRef.current]);
-      },
-    })
-  ).current;
-
-  return <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />;
-};
-
-export const MazeScreen = () => {
+export const MazeScreen = ({ children, ...props }) => {
   const [path, setPath] = useState([]);
+  const [isModalVisible, setIsModalVisible] = useState(false);
   const [containerWidth, setContainerWidth] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
-  const { mazeImage } = useContext(UDPContext);
+  const { mazeImage, socket, status } = useContext(UDPContext);
 
   const handleLayout = () => {
     const { width, height } = Dimensions.get("window");
@@ -89,27 +79,49 @@ export const MazeScreen = () => {
     setContainerHeight(height);
   };
 
-  return (
-    <MazeContainer>
-      <MazeImage
-        source={{
-          uri: mazeImage,
-        }}
-        resizeMode="contain"
-      />
-    </MazeContainer>
+  const onDecline = () => {
+    setIsModalVisible(false);
+  };
 
-    // <DrawingContainer>
-    //   <MazeContainer onLayout={handleLayout}>
-    //     <GesturePath
-    //       path={path}
-    //       color="green"
-    //       containerWidth={containerWidth}
-    //       containerHeight={containerHeight}
-    //       mazeImage={mazeImage}
-    //     />
-    //     <GestureRecorder onPathChanged={setPath} />
-    //   </MazeContainer>
-    // </DrawingContainer>
+  const onAccept = () => {
+    if (status["connection"]) {
+      sendTakePic(socket);
+    } else {
+      Toast.show("Please connect first.", {
+        duration: Toast.durations.SHORT,
+        backgroundColor: "red", // Change the background color to red
+        textColor: "white",
+        animation: true,
+        hideOnPress: true,
+      });
+    }
+    setIsModalVisible(false);
+  };
+
+  return (
+    <ScreenContainer>
+      <MazeContainer>
+        <MazeImage
+          source={{
+            uri: mazeImage,
+          }}
+          resizeMode="contain"
+        />
+      </MazeContainer>
+      <TakePictureModal
+        visible={isModalVisible}
+        onRequestClose={() => onDecline()}
+        onAccept={() => onAccept()}
+      />
+      <ButtonContainer>
+        <TouchableOpacity
+          onPress={() => {
+            setIsModalVisible(!isModalVisible);
+          }}
+        >
+          <CircleWithInnerRing />
+        </TouchableOpacity>
+      </ButtonContainer>
+    </ScreenContainer>
   );
 };

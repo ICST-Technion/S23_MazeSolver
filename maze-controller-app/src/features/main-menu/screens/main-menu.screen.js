@@ -78,7 +78,17 @@ export const MainMenu = ({ navigation }) => {
                 mode="contained"
                 color="black"
                 onPress={() => {
-                  sendStart(socket);
+                  if (status["connection"]) {
+                    sendStart(socket);
+                  } else {
+                    Toast.show("Please connect first.", {
+                      duration: Toast.durations.SHORT,
+                      backgroundColor: "red", // Change the background color to red
+                      textColor: "white",
+                      animation: true,
+                      hideOnPress: true,
+                    });
+                  }
                 }}
               >
                 Start
@@ -90,7 +100,17 @@ export const MainMenu = ({ navigation }) => {
                 mode="contained"
                 color="black"
                 onPress={() => {
-                  sendStop(socket);
+                  if (status["connection"]) {
+                    sendStop(socket);
+                  } else {
+                    Toast.show("Please connect first.", {
+                      duration: Toast.durations.SHORT,
+                      backgroundColor: "red", // Change the background color to red
+                      textColor: "white",
+                      animation: true,
+                      hideOnPress: true,
+                    });
+                  }
                 }}
               >
                 Stop
@@ -111,7 +131,17 @@ export const MainMenu = ({ navigation }) => {
                       hideOnPress: true,
                     });
                   } else {
-                    sendReset(socket);
+                    if (status["connection"]) {
+                      sendReset(socket);
+                    } else {
+                      Toast.show("Please connect first.", {
+                        duration: Toast.durations.SHORT,
+                        backgroundColor: "red", // Change the background color to red
+                        textColor: "white",
+                        animation: true,
+                        hideOnPress: true,
+                      });
+                    }
                   }
                 }}
               >
