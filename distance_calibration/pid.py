@@ -1,6 +1,10 @@
+"""
+PID controller interface
+"""
+
 class PIDController:
     def __init__(self, kp, ki, kd):
-        self.kp = kp  # Proportional gain, how fast system responds
+        self.kp = kp  # Proportional gain
         self.ki = ki  # Integral gain,
         self.kd = kd  # Derivative gain
 
@@ -8,11 +12,21 @@ class PIDController:
         self.integral = 0  # Accumulated error
 
     def reset(self):
+        """
+        resets the controller
+        :return: None
+        """
         self.last_error = 0
         self.integral = 0
 
     def calculate(self, error, dt=1):
+        """
+        calculates the PID value given an error
 
+        :param error: the observed error
+        :param dt: time unit for derivative and integral, defaults to 1
+        :return: the PID value
+        """
         # Calculate the proportional term
         proportional = error
 
