@@ -25,6 +25,8 @@ class Config:
     accuracy_threshold = 15
     # speed to pass to the car for rotations
     rotation_speed = 100
+    # max speed in forward movement
+    max_forward_speed = 200
 
     # PID params
 

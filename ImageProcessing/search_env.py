@@ -57,10 +57,6 @@ class MazeSearchEnv(object):
         self.__data_obj = mi
         self.data = self.__data_obj
         end_row, end_col = self.__data_obj.get_end_point()
-        print('end: ', end_row, end_col)
-        start_row, start_col = self.__data_obj.get_start_point()
-        print('start: ', start_row, start_col)
-        print("current:", self.__data_obj.get_current_point())
         self.__final_state = MazeState(end_row, end_col)
         self.__cost = 1
 

@@ -118,7 +118,8 @@ class MazeManager(object):
         self.agent = None
         self.maze_env = None
         self.stopped = True
-        self.robot = Robot(Config.kp, Config.ki, Config.kd, Config.a_kp, Config.a_ki, Config.a_kd)
+        self.robot = Robot(Config.kp, Config.ki, Config.kd, Config.a_kp, Config.a_ki, Config.a_kd,
+                           max_speed=Config.max_forward_speed)
         self.movement_coef = 10
         self.server = DirectionsServer(Config.host, Config.port, self)
         self.control_server = ControlServer(Config.host, Config.webserver_port, self)
