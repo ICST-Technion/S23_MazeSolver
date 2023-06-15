@@ -2,26 +2,36 @@ import React, { useEffect } from "react";
 import { View, Text } from "react-native";
 
 export const sendStart = (socket) => {
-  if (socket) {
+  if (socket !== null) {
     socket.send("start");
+    return true;
   }
+  return false;
 };
 
 export const sendStop = (socket) => {
-  if (socket) {
+  if (socket !== null) {
     socket.send("stop");
+    return true;
+  } else {
+    return false;
   }
 };
 
 export const sendReset = (socket) => {
-  if (socket) {
+  if (socket !== null) {
     socket.send("reset");
+    return true;
+  } else {
+    return false;
   }
 };
 export const sendTakePic = (socket) => {
-  if (socket) {
+  if (socket !== null) {
     socket.send("pic");
+    return true;
   }
+  return false;
 };
 
 export const connectToWebSocket = async (ip, port, setStatus, setImage) => {
