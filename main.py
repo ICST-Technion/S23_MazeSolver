@@ -1,7 +1,9 @@
 import cv2
-import sys
-
 import numpy as np
+import logging
+import time
+import threading
+import math
 
 from Camera.camera import Camera
 from config import Config
@@ -9,10 +11,6 @@ from ImageProcessing.preprocess_maze import MazeImage
 from ImageProcessing.search_env import MazeSearchEnv
 from ImageProcessing.search_agents import Heuristic1, WeightedAStarAgent, ContextHeuristic
 from Server.server import DirectionsServer, ControlServer
-import logging
-import time
-import threading
-import math
 from Robot.robot import Robot
 
 

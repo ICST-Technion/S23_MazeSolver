@@ -1,11 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[32]:
-
-
 import cv2
-import numpy as np
 
 from ImageProcessing.preprocess_maze import MazeImage
 

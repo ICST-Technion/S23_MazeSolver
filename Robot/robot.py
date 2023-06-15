@@ -1,5 +1,4 @@
 from distance_calibration.pid import PIDController
-import numpy as np
 
 
 class Robot(object):

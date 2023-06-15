@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-from ImageProcessing.search_env import MazeSearchEnv, MazeState
+from ImageProcessing.search_env import MazeSearchEnv
 import heapdict
 
 
