@@ -134,35 +134,59 @@ class MazeManager(object):
             "connection": True,
             "path_found": False,
             "running": False,
-            "calculating_path": False, }
+            "calculating_path": False,
+        }
 
     def get_status(self):
+        """
+        gets the status of the different possible operations
+        :return: dict
+        """
         return self.status
 
     def get_image(self):
+        """
+        get the current image that the maze environment is using
+        :return: numpy array
+        """
         return self.maze_env.get_image()
 
     def get_status_image(self):
+        """
+        gets the image to display on the app.
+        specifically warped no threshold.
+        if not available then the image the camera sees.
+        :return: numpy array
+        """
         if self.maze_env:
             return self.maze_env.get_warped_image()
         return self.cam.retrieve_image()
 
     def is_stopped(self):
+        # returns if solver is stopped
         return self.stopped
 
     def stop_solver(self):
+        # stops the solver
         self.stopped = True
         self.status['running'] = False
 
     def start_solver(self):
+        # starts the solver
         self.stopped = False
         self.status['running'] = True
 
     def reload_initial_image(self):
+        # reloads the initial image of just the maze from the camera
         self.stopped = True
         self.maze_env.load_initial_image(self.cam.retrieve_image())
 
     def load_env(self, from_file=False):
+        """
+        loads the maze env either from a file or camera's feed
+        :param from_file: whether to load from file or not
+        :return: None
+        """
         self.stopped = True
         # loads maze without aruco
         if from_file:
@@ -170,9 +194,6 @@ class MazeManager(object):
         else:
             im = self.cam.retrieve_image()
         self._mi.load_initial_image(im)
-        # waits for user to start
-        while self.stopped:
-            time.sleep(1)
         # loads maze with aruco
         self.status['calculating_path'] = True
         self._mi.load_aruco_image(self.cam.retrieve_image())
@@ -181,7 +202,21 @@ class MazeManager(object):
         self.update_directions()
         self.status['calculating_path'] = False
 
+    def restart_maze(self):
+        # resets maze to starting conditions and reloads directions
+        self.finished = False
+        self.status['calculating_path'] = True
+        self._mi.load_aruco_image(self.cam.retrieve_image())
+        self.maze_env = MazeSearchEnv(self._mi)
+        self.agent = WeightedAStarAgent(self.maze_env, 0.5, Heuristic1())
+        self.update_directions()
+        self.status['calculating_path'] = False
+
     def update_directions(self):
+        """
+        updates the directions of the maze from camera's image
+        :return: None
+        """
         changed_stop = False
         if not self.stopped:
             self.stopped = True
@@ -196,41 +231,41 @@ class MazeManager(object):
             self.stopped = False
 
     def reload_image(self):
+        # reloads image from camera
         self.maze_env.load_image(self.cam.retrieve_image())
 
     def get_current_coords(self):
+        # returns the current car coordinates
+        # reloads image
         self.reload_image()
         current_cords = self.maze_env.get_current_coords()
         return current_cords
 
-    def restart_maze(self):
-        self.finished = False
-        self.status['calculating_path'] = True
-        self._mi.load_aruco_image(self.cam.retrieve_image())
-        self.maze_env = MazeSearchEnv(self._mi)
-        self.agent = WeightedAStarAgent(self.maze_env, 0.5, Heuristic1())
-        self.update_directions()
-        self.status['calculating_path'] = False
-
     def get_forward_coords(self):
+        # gets the coordinates of the forward aruco on car
         self.reload_image()
         current_cords = self.maze_env.get_forward_coords()
         return current_cords
 
     def get_last_coords(self):
+        # gets the last coordinates of the car without reloading
         return self.maze_env.get_current_coords()
 
     def update_parameters(self, expected, actual, current, last):
+        # updates the movement coefficient if the car moved
         if dist(last, current) > Config.moved_sensitivity:
             self.movement_coef = (expected / actual) * self.movement_coef
 
     def init_capture(self):
+        # starts live capture on the image
         self.cam.start_live_capture()
 
     def stop_capture(self):
+        # stops the capture
         self.cam.stop_live_capture()
 
     def start_server(self, blocking=False):
+        # starts the commands server
         if blocking:
             self.server.start_server()
         else:
@@ -238,6 +273,7 @@ class MazeManager(object):
             t.start()
 
     def start_control_server(self, blocking=False):
+        # starts the control server
         if blocking:
             self.server.start_server()
         else:
@@ -245,6 +281,7 @@ class MazeManager(object):
             t.start()
 
     def get_directions(self):
+        # gets new directions by solving the maze
         actions, cost, expanded = self.agent.run_search()
         if cost == -1:
             self.status['path_found'] = False
@@ -263,9 +300,16 @@ class MazeManager(object):
             return smoothed_actions
 
     def get_car_angle(self):
+        # gets the car's angle
         return self.maze_env.get_car_angle()
 
     def process_actions(self, actions):
+        """
+        smooths out the actions of the car. Removes movements that are smaller
+        than a threshold.
+        :param actions: list of actions (strings)
+        :return: list of actions of form (ACTION_TYPE, int)
+        """
         new_actions = []
         counter = 0
         action_type = actions[0]
@@ -286,6 +330,12 @@ class MazeManager(object):
         return new_actions
 
     def get_dynamic_next_direction(self):
+        """
+        gets the next direction to execute.
+        Stay, rotate or forward/backward.
+        :return: (direction_type: int, left_speed: int, right_speed: int, duration: int)
+
+        """
         if not self.directions:
             return Config.actions_to_num["STAY"], 0, 0, 0
 
@@ -307,6 +357,7 @@ class MazeManager(object):
                 self.moved_forward = True
                 self.last_interval = amount
                 speed_l, speed_r = self.robot.get_speeds()
+                # reduce speed if we are close to point
                 if amount < 25:
                     speed_l /= 2
                     speed_r /= 2
@@ -316,12 +367,23 @@ class MazeManager(object):
                 self.moved_forward = True
                 self.last_interval = amount
                 speed_l, speed_r = self.robot.get_speeds()
+                # reduce speed if we are close to point
                 if amount < 25:
                     speed_l /= 2
                     speed_r /= 2
                 return Config.actions_to_num["DOWN"], int(speed_r), int(speed_l), int(self.movement_coef * amount)
 
     def update_step(self):
+        """
+        Runs before every direction request.
+        Updates:
+            - current location
+            - amount to travel
+            - transitions from rotation/forward/backward
+            - movement coeficient
+            - robot speeds
+        :return: None
+        """
         # if we have directions left and not in stand by mode
         if self.directions:
             # gets current and last location and updates current location
@@ -379,10 +441,12 @@ class MazeManager(object):
 
 
 if __name__ == "__main__":
+    # create manager
     manager = MazeManager()
+    # start capturing images
     manager.init_capture()
     time.sleep(0.5)
     # manager.cam.save_image("saved.jpg")
+    # start control server
     manager.start_control_server(blocking=False)
-    manager.load_env(from_file=True)
     manager.start_server(blocking=True)

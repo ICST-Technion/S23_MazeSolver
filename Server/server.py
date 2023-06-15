@@ -138,6 +138,9 @@ class ControlServer:
             if message == "reset":
                 self.maze.restart_maze()
 
+            if message == "pic":
+                self.maze.load_env(from_file=False)
+
             if message == "status":
                 status = {"type": "status", "status": self.maze.get_status()}
                 await websocket.send(json.dumps(status))
