@@ -2,74 +2,88 @@ import cv2
 
 
 class Config:
-    # server socket
-    # host = "127.0.0.1"  # PC
+    # Server Configurations
+
+    # host ip
     host = "192.168.5.1"  # RPI
+    # port to serve control server on
     webserver_port = 7000
+    # port to serve commands server on
     port = 8080
 
-    # Tuning
-    learning_rate = 0.001
-    lower_confidence_thresh = 0.8
-    error_update_thresh = 0.05  # 0 - 1
-    interval_size = 50
-    right_angle = 680
+    # Movement Configurations
 
+    # num pixels to move before sampling camera
+    interval_size = 50
+    # minimum degree error in rotation
+    rotation_sensitivity = 2
+    # minimum number of consecutive actions for solver to consider a movement
+    min_actions_for_movement = 10
+    # minimum pixels for aruco to move to consider a movement
+    moved_sensitivity = 30
+    # number of pixels for car to be apart from its destination to consider as moved
+    accuracy_threshold = 15
+    # speed to pass to the car for rotations
+    rotation_speed = 100
 
     # PID params
+
     kp = 2
     ki = .25
     kd = 0.5
+
     # angle PID params
     a_kp = 3.2
     a_ki = .1
     a_kd = 2
 
-    # bot
+    # Directions Protocol Configurations
+
+    # value associated with direction
     right = 1
     left = 2
     up = 3
     down = 4
     stay = 5
     finished = 6
-    directions_map = {1: "RIGHT", 2: "LEFT", 3: "UP", 4: "DOWN", 5: "STAY", 6: "FINISHED"}
+    # dict mapping names to values
     actions_to_num = {"UP": 3, "DOWN": 4, "LEFT": 2, "RIGHT": 1,
                       "DIAG_UL": 5, "DIAG_UR": 5, "DIAG_DL": 5, "DIAG_DR": 5, "STAY": 5}
-    angle_map = {"LEFT": 270, "UP": 0, "DOWN": 180, "RIGHT": 90}
-    rotation_sensitivity = 2
-    min_actions_for_movement = 10
-
+    # opcodes according to communication protocol
     opcodes = {
         "DIRECTION_REQUEST": 1,
         "DIRECTION_MSG": 2,
         "ESP32_ACK": 3,
         "Control": 4
     }
-
+    # device codes according to communication protocol
     dev_codes = {
         "RPI": 31,
         "ESP_32": 32,
         "Controller": 33
     }
 
-    # logging
+    # logging file
     logging_file = "./maze_solver.log"
 
-    # Image processing
+    # Image Processing Configurations
+
+    # aruco dictionary used
     aruco_dict = cv2.aruco.DICT_4X4_100
+    # location to retrieve image from if flag for from file is used (only for testing)
     image_file = "./saved.jpg"
+    # resolution of images
     camera_resolution = (2592, 1936)
-    frame_rate = 6
+    # width of actual maze, allows for better perspective transformation
     maze_width = 1189
+    # height of actual maze, allows for better perspective transformation
     maze_height = 849
-    # image_file = "./Camera/sample_images/good2.jpg"
+    # ID to use for the car, should not be an id used by any of the aruCos
     CAR_ID = 4
+    # the aruCo ID used for the back of the car
     BACKWARD_CAR_ID = 3
+    # the aruCo ID used for the front of the car
     FORWARD_CAR_ID = 1
+    # the aruCo ID used for the end
     END_ID = 0
-
-    moved_sensitivity = 30
-    accuracy_threshold = 15
-
-    rotation_speed = 100
 

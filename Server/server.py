@@ -106,8 +106,6 @@ class DirectionsServer:
                                                           )
                                 # send data to bot and log to console
                                 conn.sendall(msg)
-                                print(f"sent direction: {Config.directions_map[next_direction[0]]}"
-                                              f" ,{next_direction[1]}, {next_direction[2], next_direction[3]}")
                                 data = conn.recv(1024)
                                 parsed_message = self.parse_message(data)
                                 if parsed_message['opcode'] == Config.opcodes['ESP32_ACK']:

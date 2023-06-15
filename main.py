@@ -12,7 +12,6 @@ from Server.server import DirectionsServer, ControlServer
 import logging
 import time
 import threading
-from distance_calibration.confidence_based import ConfidenceCalibrator
 import math
 from Robot.robot import Robot
 
@@ -116,13 +115,12 @@ class MazeManager(object):
     def __init__(self):
         self.last_action = "RIGHT"
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
-        self.cam = Camera(frame_rate=Config.frame_rate, camera_resolution=Config.camera_resolution)
+        self.cam = Camera(camera_resolution=Config.camera_resolution)
         self._mi = MazeImage(Config.aruco_dict)
         self.agent = None
         self.maze_env = None
         self.stopped = True
         self.robot = Robot(Config.kp, Config.ki, Config.kd, Config.a_kp, Config.a_ki, Config.a_kd)
-        self.confidence_model = ConfidenceCalibrator(Config.lower_confidence_thresh)
         self.movement_coef = 10
         self.server = DirectionsServer(Config.host, Config.port, self)
         self.control_server = ControlServer(Config.host, Config.webserver_port, self)
