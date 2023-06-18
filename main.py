@@ -43,7 +43,6 @@ def calculate_cos_theta(next_direction, current_direction):
     angle_2 = 180*np.arctan2(current_direction[0], current_direction[1])/np.pi
     angle_2 = (angle_2 + 360) % 360
     rotation_amount = min(abs(angle_1 - angle_2), abs(360 - abs(angle_1-angle_2)))
-
     if angle_1 == 0:
         if angle_2 > 180:
             return -rotation_amount
@@ -158,6 +157,8 @@ class MazeManager(object):
         if not available then the image the camera sees.
         :return: numpy array
         """
+        if self.stopped:
+            return self.cam.retrieve_image()
         if self.maze_env:
             return self.maze_env.get_warped_image()
         return self.cam.retrieve_image()
@@ -188,6 +189,7 @@ class MazeManager(object):
         :return: None
         """
         self.stopped = True
+        self.status['path_found'] = False
         # loads maze without aruco
         if from_file:
             im = cv2.imread(Config.image_file, cv2.IMREAD_GRAYSCALE)
@@ -195,22 +197,29 @@ class MazeManager(object):
             im = self.cam.retrieve_image()
         self._mi.load_initial_image(im)
         # loads maze with aruco
-        self.status['calculating_path'] = True
-        self._mi.load_aruco_image(self.cam.retrieve_image())
-        self.maze_env = MazeSearchEnv(self._mi)
-        self.agent = WeightedAStarAgent(self.maze_env, 0.5, Heuristic1())
-        self.update_directions()
-        self.status['calculating_path'] = False
-
+    #
+    #
+    # def load_env_stage_2(self):
+    #     self.status['calculating_path'] = True
+    #     self._mi.load_aruco_image(self.cam.retrieve_image())
+    #     self.maze_env = MazeSearchEnv(self._mi)
+    #     self.agent = WeightedAStarAgent(self.maze_env, 0.5, Heuristic1())
+    #     self.update_directions()
+    #     self.status['calculating_path'] = False
+    #
     def restart_maze(self):
         # resets maze to starting conditions and reloads directions
-        self.finished = False
-        self.status['calculating_path'] = True
-        self._mi.load_aruco_image(self.cam.retrieve_image())
-        self.maze_env = MazeSearchEnv(self._mi)
-        self.agent = WeightedAStarAgent(self.maze_env, 0.5, Heuristic1())
-        self.update_directions()
-        self.status['calculating_path'] = False
+        try:
+            self.finished = False
+            self.status['calculating_path'] = True
+            self._mi.load_aruco_image(self.cam.retrieve_image())
+            self.maze_env = MazeSearchEnv(self._mi)
+            self.agent = WeightedAStarAgent(self.maze_env, 0.5, Heuristic1())
+            self.update_directions()
+            self.status['calculating_path'] = False
+        except:
+            self.status['calculating_path'] = False
+
 
     def update_directions(self):
         """
@@ -288,12 +297,12 @@ class MazeManager(object):
             return []
         else:
             cords = self.maze_env.actions_to_cords(actions)
-
             # added to improve A star times
             self.agent.heuristic = ContextHeuristic(cords)
             self.status['path_found'] = True
             logging.debug(f"found path: {cost != -1}")
             smoothed_actions = self.process_actions(actions)
+            print(smoothed_actions)
 
             self.cords = self.maze_env.actions_to_cords_with_weight(smoothed_actions)
             self.last_turn = self.cords.pop(0)
@@ -313,9 +322,12 @@ class MazeManager(object):
         new_actions = []
         counter = 0
         action_type = actions[0]
-
+        all_actions = []
         for a in actions:
             if a != action_type:
+                if "DIAG" in a:
+                    counter += 1
+                    continue
                 if counter > Config.min_actions_for_movement:
                     if new_actions and new_actions[-1][0] == action_type:
                         new_item = (new_actions[-1][0], new_actions[-1][1] + counter)
@@ -323,10 +335,12 @@ class MazeManager(object):
                         new_actions.append(new_item)
                     else:
                         new_actions.append((action_type, counter))
+
                 action_type = a
                 counter = 1
             else:
                 counter += 1
+
         return new_actions
 
     def get_dynamic_next_direction(self):
@@ -385,10 +399,15 @@ class MazeManager(object):
         :return: None
         """
         # if we have directions left and not in stand by mode
-        if self.directions:
+        if self.directions and not self.stopped:
             # gets current and last location and updates current location
             last_loc = self.get_last_coords()
-            current_location = self.get_current_coords()
+            try:
+                current_location = self.get_current_coords()
+            except:
+                print("issue with aruco")
+                self.stopped = True
+                return
             current_forward_location = self.get_forward_coords()
             if dist(self.maze_env.get_end_point(), current_forward_location) < 100:
                 self.finished = True
@@ -421,6 +440,8 @@ class MazeManager(object):
                 num_traveled = dist(last_loc, current_location)
                 if self.moved_forward:
                     # update the amount to move the amount left
+                    print(f"distance from line: {get_distance_left(current_location, self.last_turn, self.cords[0])}")
+                    print(f"current location: {current_location}\t\t last turn: {self.last_turn}\t\tnext cords: {self.cords[0]}")
                     temp = (self.directions[0][0], get_distance_left(current_location, self.last_turn, self.cords[0]))
                     self.directions[0] = temp
                     # if we moved past or to the point we needed

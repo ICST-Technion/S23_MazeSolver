@@ -1,8 +1,9 @@
 import threading
 from picamera import PiCamera
+from picamera.array import PiRGBArray
 import numpy as np
 import cv2
-
+import time
 
 """
 Camera module
@@ -23,6 +24,9 @@ class Camera:
         self.picture_lock = threading.Lock()
         # flag that indicates whether camera is capturing pictures
         self.is_capturing = False
+        self.cam.framerate = 32
+        rawCapture = PiRGBArray(camera, size=(640, 480))
+        time.sleep(0.5)
 
     def retrieve_image(self):
         """
@@ -77,6 +81,20 @@ class Camera:
         self.is_capturing = True
         t = threading.Thread(target=self.live_capture)
         t.start()
+
+    def start_live_video_capture(self):
+        for frame in self.camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+            # grab the raw NumPy array representing the image, then initialize the timestamp
+            # and occupied/unoccupied text
+            image = frame.array
+            # show the frame
+            cv2.imshow("Frame", image)
+            key = cv2.waitKey(1) & 0xFF
+            # clear the stream in preparation for the next frame
+            rawCapture.truncate(0)
+            # if the `q` key was pressed, break from the loop
+            if key == ord("q"):
+                break
 
     def stop_live_capture(self):
         """

@@ -61,13 +61,13 @@ class DirectionsServer:
             # start up server
             try:
                 s.bind((self.ip, self.port))
-                s.listen()
             except Exception as e:
                 logging.error(f"Server startup error: {repr(e)}")
 
             while True:
                 try:
                     logging.debug(f"Server Listening")
+                    s.listen()
                     conn, addr = s.accept()
                     with conn:
                         logging.debug(f"Connected by {addr}")
@@ -130,15 +130,19 @@ class ControlServer:
     async def handle_client(self, websocket, path):
         async for message in websocket:
             if message == "start":
+                print("got command: start")
                 self.maze.start_solver()
 
             if message == "stop":
+                print("got command: stop")
                 self.maze.stop_solver()
 
             if message == "reset":
+                print("got command: reset")
                 self.maze.restart_maze()
 
             if message == "pic":
+                print("got command: pic")
                 self.maze.load_env(from_file=False)
 
             if message == "status":

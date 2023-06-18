@@ -231,6 +231,7 @@ class MazeImage(object):
         """
         self.data, warped_orig, self.warp_matrix = load_image_post_aruco(img)
         self.original_image = np.copy(self.data)
+        cv2.imwrite('baseline.jpg', self.data)
         self.aruco = None
 
     def load_aruco_image(self, img):
@@ -278,7 +279,9 @@ class MazeImage(object):
         runs BFS from the car's center to find closest point on maze to start movement from
         :return: None
         """
+
         curr_row, curr_col = self.get_current_point()
+        print("before bfs: ", curr_row, curr_col)
         checked = []
         q = [(curr_row, curr_col)]
         while q:
@@ -288,6 +291,7 @@ class MazeImage(object):
                 if 0 <= v[0] < self.original_image.shape[0] \
                         and 0 <= v[1] < self.original_image.shape[1] \
                         and self.original_image[v[0]][v[1]] == MAZE_COLOR:
+                    print(f"start point: {v}")
                     return v
                 if (v[0], v[1] - 1) not in checked:
                     q.append((v[0], v[1] - 1))
