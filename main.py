@@ -20,22 +20,26 @@ def dist(c1, c2):
 
 
 # change dist here to be L1 not L2
-def get_distance_left(current_loc, src, dst):
+def get_distance_left(current_loc, src, dst, action_type):
+    print(f"action type: {action_type}")
     if src[0] == dst[0]:
-        if min(src[1], dst[1]) <= current_loc[1] <= max(dst[1], src[1]):
+        num_left = np.sign(dst[1] - current_loc[1])
+        if num_left == np.sign(Config.action_vectors[action_type][1]):
+            print(f"case 1: {num_left}")
             return abs(dst[1] - current_loc[1])
-            # return dist(current_loc, dst)
         else:
+            print(f"case 2: {num_left}")
             return -abs(dst[1] - current_loc[1])
-            # return -dist(current_loc, dst)
     else:
-        if min(src[0], dst[0]) <= current_loc[0] <= max(src[0], dst[0]):
-            return abs(dst[0] - current_loc[0])
-            # return dist(current_loc, dst)
-        else:
-            return -abs(dst[0] - current_loc[0])
-            # return -dist(current_loc, dst)
+        num_left = np.sign(dst[0] - current_loc[0])
+        if num_left == np.sign(Config.action_vectors[action_type][0]):
+            print(f"case 3: {num_left}")
 
+            return abs(dst[0] - current_loc[0])
+        else:
+            print(f"case 4: {num_left}")
+
+            return -abs(dst[0] - current_loc[0])
 
 def calculate_cos_theta(next_direction, current_direction):
     angle_1 = 180*np.arctan2(next_direction[0], next_direction[1])/np.pi
@@ -112,13 +116,15 @@ class MazeManager(object):
     def __init__(self):
         self.last_action = "RIGHT"
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
-        self.cam = Camera(camera_resolution=Config.camera_resolution)
+        self.cam = Camera(camera_resolution=Config.camera_resolution,
+                          frame_rate=Config.frame_rate)
         self._mi = MazeImage(Config.aruco_dict)
         self.agent = None
         self.maze_env = None
         self.stopped = True
         self.robot = Robot(Config.kp, Config.ki, Config.kd, Config.a_kp, Config.a_ki, Config.a_kd,
-                           max_speed=Config.max_forward_speed)
+                           max_speed=Config.max_forward_speed,
+                           natural_error=Config.natural_error)
         self.movement_coef = 10
         self.server = DirectionsServer(Config.host, Config.port, self)
         self.control_server = ControlServer(Config.host, Config.webserver_port, self)
@@ -267,7 +273,8 @@ class MazeManager(object):
 
     def init_capture(self):
         # starts live capture on the image
-        self.cam.start_live_capture()
+        self.cam.start_live_video_capture()
+        # self.cam.start_live_capture()
 
     def stop_capture(self):
         # stops the capture
@@ -431,18 +438,18 @@ class MazeManager(object):
                 # update sideways position
                 err = distance_from_line(self.last_turn, self.cords[0], current_forward_location)
                 if err < 0:
-                    err = min(err+5, 0)
+                    err = min(err+Config.line_width/2, 0)
                 if err > 0:
-                    err = max(err-5, 0)
+                    err = max(err-Config.line_width/2, 0)
                 self.robot.calc_speeds(err)
                 # update forward coefficient and update directions if was off
                 num_expected = self.last_interval
                 num_traveled = dist(last_loc, current_location)
                 if self.moved_forward:
                     # update the amount to move the amount left
-                    print(f"distance from line: {get_distance_left(current_location, self.last_turn, self.cords[0])}")
+                    print(f"distance from line: {get_distance_left(current_location, self.last_turn, self.cords[0], self.directions[0][0])}")
                     print(f"current location: {current_location}\t\t last turn: {self.last_turn}\t\tnext cords: {self.cords[0]}")
-                    temp = (self.directions[0][0], get_distance_left(current_location, self.last_turn, self.cords[0]))
+                    temp = (self.directions[0][0], get_distance_left(current_location, self.last_turn, self.cords[0], self.directions[0][0]))
                     self.directions[0] = temp
                     # if we moved past or to the point we needed
                     if abs(self.directions[0][1]) <= Config.accuracy_threshold:
@@ -452,7 +459,7 @@ class MazeManager(object):
                         self.is_rotating = True
                         # just started rotating so reset old errors
                         self.robot.reset_angle_pid()
-                    self.update_parameters(num_expected, num_traveled, current_location, last_loc)
+                    # self.update_parameters(num_expected, num_traveled, current_location, last_loc)
 
         else:
             self.stopped = True

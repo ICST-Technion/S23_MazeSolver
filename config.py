@@ -14,7 +14,7 @@ class Config:
     # Movement Configurations
 
     # num pixels to move before sampling camera
-    interval_size = 50
+    interval_size = 10
     # minimum degree error in rotation
     rotation_sensitivity = 2
     # minimum number of consecutive actions for solver to consider a movement
@@ -26,17 +26,19 @@ class Config:
     # speed to pass to the car for rotations
     rotation_speed = 100
     # max speed in forward movement
-    max_forward_speed = 200
+    max_forward_speed = 170
+    # error that occurs from difference in motors
+    natural_error = 8
 
     # PID params
 
     kp = 2
-    ki = .25
-    kd = 0.5
+    ki = .1
+    kd = 1.2
 
     # angle PID params
     a_kp = 3.2
-    a_ki = .1
+    a_ki = .22
     a_kd = 2
 
     # Directions Protocol Configurations
@@ -51,6 +53,8 @@ class Config:
     # dict mapping names to values
     actions_to_num = {"UP": 3, "DOWN": 4, "LEFT": 2, "RIGHT": 1,
                       "DIAG_UL": 5, "DIAG_UR": 5, "DIAG_DL": 5, "DIAG_DR": 5, "STAY": 5}
+    action_vectors = {"UP": (-1, 0), "DOWN": (1, 0), "LEFT": (0, -1), "RIGHT": (0, 1),
+       "DIAG_UL": (-1, -1), "DIAG_UR": (-1, 1), "DIAG_DL": (1, -1), "DIAG_DR": (1, 1)}
     # opcodes according to communication protocol
     opcodes = {
         "DIRECTION_REQUEST": 1,
@@ -76,10 +80,13 @@ class Config:
     image_file = "./saved.jpg"
     # resolution of images
     camera_resolution = (2592, 1936)
+    # frame rate
+    frame_rate = 3
     # width of actual maze, allows for better perspective transformation
     maze_width = 1189
     # height of actual maze, allows for better perspective transformation
     maze_height = 849
+    line_width = 4
     # ID to use for the car, should not be an id used by any of the aruCos
     CAR_ID = 4
     # the aruCo ID used for the back of the car

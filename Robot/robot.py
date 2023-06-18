@@ -2,7 +2,7 @@ from distance_calibration.pid import PIDController
 
 
 class Robot(object):
-    def __init__(self, kp, ki, kd, a_kp, a_ki, a_kd, max_speed=200):
+    def __init__(self, kp, ki, kd, a_kp, a_ki, a_kd, max_speed=200, natural_error=15):
         """
         Creates robot and initializes PID controllers for rotation/forward motion
         """
@@ -13,6 +13,7 @@ class Robot(object):
         self.l_speed = 0
         self.r_speed = 0
         self.max_speed = max_speed
+        self.natural_error = natural_error
 
     def set_position(self, loc, orientation):
         self.location = loc
@@ -54,11 +55,11 @@ class Robot(object):
         if steering < -max_steering_angle:
             steering = -max_steering_angle
         if steering > 0:
-            left_speed = self.max_speed - 10
+            left_speed = self.max_speed - self.natural_error
             right_speed = min(left_speed - steering, self.max_speed)
         else:
             right_speed = self.max_speed
-            left_speed = min(right_speed + steering, self.max_speed) - 10
+            left_speed = min(right_speed + steering, self.max_speed) - self.natural_error
 
         return int(left_speed), int(right_speed)
 
