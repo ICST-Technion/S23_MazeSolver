@@ -1,6 +1,9 @@
 
 #include "messages.h"
 
+/**
+ * Creates an acknowledge message and send it back to the RPI.
+ */
 void buildAndSendAckMsg(WiFiClient *client, MSG direction_msg)
 {
     MSG ack;
@@ -15,6 +18,9 @@ void buildAndSendAckMsg(WiFiClient *client, MSG direction_msg)
     client->write((uint8_t *)&ack, sizeof(ack));
 }
 
+/**
+ * Creates a request message and send it to the RPI.
+ */
 void requestDirection(WiFiClient *client)
 {
     MSG requestMsg;
@@ -29,6 +35,9 @@ void requestDirection(WiFiClient *client)
     client->write((uint8_t *)&requestMsg, sizeof(requestMsg));
 }
 
+/**
+ * Read the incoming message to the buffer. (from RPI)
+ */
 int readMessage(MSG *directionMsg, WiFiClient *client)
 {
     int bytesRemain = sizeof(*directionMsg);
@@ -50,18 +59,22 @@ int readMessage(MSG *directionMsg, WiFiClient *client)
     return SUCCESS;
 }
 
-int waitForClient(WiFiClient *client){
-int check_connection_counter = 0;
+/**
+ * Checks if the client is available.
+ * There is a timeout of 2 seconds if there isnt a response from client.
+ */
+int waitForClient(WiFiClient *client)
+{
+    int check_connection_counter = 0;
     while (client->available() <= 0)
     {
-      delay(200);
-      check_connection_counter++;
-      if (check_connection_counter > MAX_TEMPS_BEFORE_BREAK)
-      {
-        return ERROR;
-      }
+        delay(200);
+        check_connection_counter++;
+        if (check_connection_counter > MAX_TEMPS_BEFORE_BREAK)
+        {
+            return ERROR;
+        }
     }
 
     return SUCCESS;
-
 }
