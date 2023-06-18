@@ -1,58 +1,66 @@
 #include "MotorDriver.h"
-#include <WiFi.h>
-#include "messages.h"
-#include <vector>
-using namespace std;
-//#define LED1 35
-#define MAX_SPEED 255
 
-// #define LED2 34
 vector<double> rightSpeedVec = {1, 2, 3, 4, 5};
 vector<double> leftSpeedVec = {5, 4, 3, 2, 1};
 
-void LineFollowerForward(MSG msg);
+void moveForward(MSG msg);
 void processCarMovement(MSG directionMSG);
-void processEasyCarMovement(unsigned char direction, int speedMotorA, int speedMotorB, int timeDelay);
-void newForward(MSG forward_msg);
 
-void newForward(MSG forward_msg)
+/**
+ * Blinks the two leds if the car arrived to the end of the maze.
+ */
+void ledsBlink(double delayTime, int seconds)
 {
-    if (forward_msg.direction != FORWARD || forward_msg.speed_left_wheel > MAX_SPEED || forward_msg.speed_left_wheel < 0 || forward_msg.speed_right_wheel > MAX_SPEED || forward_msg.speed_right_wheel < 0)
+    int numOfBlinks = seconds / (delayTime / 500);
+
+    for (int i = 0; i < numOfBlinks; i++)
     {
-        return;
+        digitalWrite(LED1, HIGH);
+        digitalWrite(LED2, LOW);
+        delay(delayTime);
+        digitalWrite(LED1, LOW);
+        digitalWrite(LED2, HIGH);
+        delay(delayTime);
     }
 
-    Serial.println("FORWARD");
-    // digitalWrite(LED1, HIGH);
-
-    //  this is the motor - A
-    digitalWrite(IN1, HIGH);
-    digitalWrite(IN2, LOW);
-    analogWrite(PWMA, forward_msg.speed_right_wheel);
-
-    // // this is the motor - B
-    digitalWrite(IN3, LOW);
-    digitalWrite(IN4, HIGH);
-    analogWrite(PWMB, forward_msg.speed_left_wheel);
-
-    delay(forward_msg.time_angle);
-    Serial.println(forward_msg.speed_right_wheel);
-    Serial.println(forward_msg.speed_right_wheel);
+    digitalWrite(LED1, LOW);
+    digitalWrite(LED2, LOW);
 }
 
+/**
+ * This is the main movement function.
+ * The function sets the wheels to the direction that received from the rpi.
+ * There are 3 parameters for movement:
+ * 1. time in ms.
+ * 2. right wheel speed. (pwmA)
+ * 3. left wheel speed. (pwmB)
+ */
 void processCarMovement(MSG directionMSG)
 {
-    uint16_t lfc;
-    int64_t endTime;
     switch (directionMSG.direction)
     {
+    case FINISH:
+        Serial.println("FINISH");
+        ledsBlink(50, 10);
+        directionMSG.direction = STOP;
+        processCarMovement(directionMSG);
+        break;
     case FORWARD:
         Serial.println("FORWARD");
-        // digitalWrite(LED1, HIGH);
-        LineFollowerForward(directionMSG);
-        // newForward(directionMSG);
-        //   digitalWrite(LED1, HIGH);
-        //    stop the car
+
+        analogWrite(PWMA, directionMSG.speed_right_wheel);
+        analogWrite(PWMB, directionMSG.speed_left_wheel);
+
+        //  this is the motor - A
+        digitalWrite(IN1, HIGH);
+        digitalWrite(IN2, LOW);
+
+        // // this is the motor - B
+        digitalWrite(IN3, LOW);
+        digitalWrite(IN4, HIGH);
+        delay(directionMSG.time_angle);
+
+        // stop the car
         directionMSG.direction = STOP;
         processCarMovement(directionMSG);
         break;
@@ -70,10 +78,7 @@ void processCarMovement(MSG directionMSG)
         digitalWrite(IN3, HIGH);
         digitalWrite(IN4, LOW);
 
-        endTime = (int64_t)esp_timer_get_time() / 1000 + directionMSG.time_angle;
-        while ((endTime - (int64_t)esp_timer_get_time() / 1000) > 0)
-        {
-        };
+        delay(directionMSG.time_angle);
 
         directionMSG.direction = STOP;
         processCarMovement(directionMSG);
@@ -88,20 +93,14 @@ void processCarMovement(MSG directionMSG)
         // this is the motor - A
         digitalWrite(IN1, HIGH);
         digitalWrite(IN2, LOW);
-        // digitalWrite(LED1, HIGH);
-        //  // this is the motor - B
+        // this is the motor - B
         digitalWrite(IN3, HIGH);
         digitalWrite(IN4, LOW);
 
-        // do half left turn
-        // delay(600);
-
-        // lfc = digitalRead(LF_C);
         delay(directionMSG.time_angle);
 
         directionMSG.direction = STOP;
         processCarMovement(directionMSG);
-
         break;
 
     case RIGHT:
@@ -113,21 +112,9 @@ void processCarMovement(MSG directionMSG)
         // this is the motor - A
         digitalWrite(IN1, LOW);
         digitalWrite(IN2, HIGH);
-        // digitalWrite(LED1, HIGH);
-        //  // this is the motor - B
+        // this is the motor - B
         digitalWrite(IN3, LOW);
         digitalWrite(IN4, HIGH);
-
-        // analogWrite(PWMA, 255);
-        // analogWrite(PWMB, 0);
-        // delay(600);
-
-        // lfc = digitalRead(LF_C);
-        // do
-        // {
-        //     lfc = digitalRead(LF_C);
-        //     delay(40);
-        // } while (lfc == 1);
 
         delay(directionMSG.time_angle);
 
@@ -142,7 +129,6 @@ void processCarMovement(MSG directionMSG)
         digitalWrite(IN2, LOW);
         analogWrite(PWMB, 0);
         analogWrite(PWMA, 0);
-        // digitalWrite(LED1, HIGH);
         //  // this is the motor - B
         digitalWrite(IN3, LOW);
         digitalWrite(IN4, LOW);
@@ -150,11 +136,13 @@ void processCarMovement(MSG directionMSG)
 
     default:
         delay(700);
-
         break;
     }
 }
 
+/**
+ * This is a debug function for checking easy movement with simple parameters.
+ */
 void processEasyCarMovement(unsigned char direction, int speedMotorA, int speedMotorB, int timeDelay)
 {
     switch (direction)
@@ -239,51 +227,10 @@ void processEasyCarMovement(unsigned char direction, int speedMotorA, int speedM
     }
 }
 
-void LineFollowerForward(MSG msg)
-{
-    // default values for speed.
-    // changes if the line follower get indication to deviation.
-    int time_angle = msg.time_angle;
-
-    analogWrite(PWMA, msg.speed_right_wheel);
-    analogWrite(PWMB, msg.speed_left_wheel);
-
-    //  this is the motor - A
-    digitalWrite(IN1, HIGH);
-    digitalWrite(IN2, LOW);
-
-    // // this is the motor - B
-    digitalWrite(IN3, LOW);
-    digitalWrite(IN4, HIGH);
-
-    int64_t endTime = (int64_t)esp_timer_get_time() / 1000 + msg.time_angle;
-    while ((endTime - (int64_t)esp_timer_get_time() / 1000) > 0)
-    {
-        // Serial.println("FORWARD");
-
-        // Serial.print("delay = ");
-        // Serial.println(min(time_angle, 50));
-        // delayMicroseconds(1000 * min(time_angle, 50));
-        // delay(min(time_angle, 50));
-        // time_angle -= min(time_angle, 50);
-
-        // uint16_t lfor = digitalRead(LFO_R);
-        // uint16_t lfir = digitalRead(LFI_R);
-        // uint16_t lfc = digitalRead(LF_C);
-        // uint16_t lfil = digitalRead(LFI_L);
-        // uint16_t lfol = digitalRead(LFO_L);
-
-        // int sum = lfor + lfir + lfc + lfil + lfol;
-        // Serial.print("sum = ");
-        // Serial.println(sum);
-
-        // if (sum == 5)
-        // {
-        //     break;
-        // }
-    }
-}
-
+/**
+ * Setup the pins that relevent to the car only.
+ * The pins are the driver motors pins on the esp32 board
+ */
 void setupPinCarModes()
 {
     // pinMode(LED1, OUTPUT);

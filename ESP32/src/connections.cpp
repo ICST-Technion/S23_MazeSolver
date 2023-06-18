@@ -2,8 +2,9 @@
 #include "WiFi.h"
 #include "main.h"
 
-#define SERVER_CONNECTION_ERROR 0
-
+/**
+ * connect to the Wifi (RPI's wifi)/
+ */
 void connectToWiFi(const char *ssid, const char *password)
 {
     int loopCounter = 0;
@@ -18,6 +19,9 @@ void connectToWiFi(const char *ssid, const char *password)
     digitalWrite(LED1, LOW);
 }
 
+/**
+ * connect to the server (RPI)/
+ */
 void connectToServer(WiFiClient &client, const char *host, const uint16_t port)
 {
     int connectionTimeOut = 10000;
@@ -29,6 +33,11 @@ void connectToServer(WiFiClient &client, const char *host, const uint16_t port)
     digitalWrite(LED2, LOW);
 }
 
+/**
+ * Checks if there is a connection to the wifi.
+ * Checks if there is a connection to the server.
+ * Sets the robot state to the relevent state.
+ */
 ROBOT_STATE checkConnectivity(WiFiClient &client)
 {
     // check WiFi connection

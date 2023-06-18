@@ -1,17 +1,18 @@
 
-
+#include "main.h"
 #include <WiFi.h>
 #include "MotorDriver.h"
 #include <vector>
-#include "main.h"
+
 #include <string>
 #include "messages.h"
 #include "connections.h"
 
 using namespace std;
 
-#define ERROR (-1)
-#define SUCCESS (0)
+// testing functions.
+static void testWheels();
+static void testPWMWheels();
 
 // Wifi info
 const char *ssid = "GIVE_ME_PI";
@@ -19,11 +20,20 @@ const char *password = "";
 const uint16_t port = 8080;
 const char *host = "192.168.5.1"; // raspberry pi ip
 int connectionTimeOut = 10000;    // 10 ms
-
 WiFiClient client;
 
+/**
+ * ROBOT states:
+ * 1. CONNECT_TO_WIFI.
+ * 2. CONNECT_TO_SERVER.
+ * 3. DO_COMMANDS.
+ */
 ROBOT_STATE state;
 
+/**
+ * Setup function starts car pins (motors) and set up two leds.
+ * configure the wifi to station mode.
+ */
 void setup()
 {
   Serial.begin(9600);
@@ -41,9 +51,16 @@ void setup()
   WiFi.mode(WIFI_STA);
 }
 
-void testWheels();
-void testPWMWheels();
-
+/**
+ * This is the main loop:
+ * There are three states.
+ * The main state is the DO_COMMANDS state.
+ * The flow is:
+ * 1. Request direction from the RPI.
+ * 2. Send ack back to RPI.
+ * 3. Move to msg direction.
+ * 4. Check connectivity before starting new cycle.
+ */
 void loop()
 {
   // testWheels();
@@ -69,21 +86,25 @@ void loop()
     }
     break;
   case DO_COMMANDS:
+    // waiting 100 ms before requesting new commands. (we dont want to overflow the RPI with the uart)
     delay(100);
+    // asking for new directions.
     requestDirection(&client);
     uint8_t rxBuffer;
-
+    // check if client is available.
     if (waitForClient(&client) != SUCCESS)
     {
+      // if the buffer is empty.
       break;
     }
 
     MSG directionMsg;
+    // check if client send new direction in rx buffer.
     if (readMessage(&directionMsg, &client) != SUCCESS)
     {
       break;
     }
-
+    // check correctness of message.
     if ((directionMsg.opcode != OPCODES::DIRECTION_MSG) ||
         (directionMsg.dst_device != DEVICE::ESP_32) ||
         (directionMsg.src_device != DEVICE::RSP))
@@ -91,17 +112,19 @@ void loop()
       // wrong message
       break;
     }
-
+    // send ack back BEFORE moving the car in order to optimized the time between to commands.
+    // now the RPI can be ready while the car is moving.
     buildAndSendAckMsg(&client, directionMsg);
+    // move the robot.
     processCarMovement(directionMsg);
-
     break;
   }
-
+  // before moving to the next direction - check that everything is fine. (client and Wifi connectivity)
   state = checkConnectivity(client);
 }
 
-void testWheels()
+// check wheels performence
+static void testWheels()
 {
   MSG direction;
   direction.speed_left_wheel = 255;
@@ -134,7 +157,8 @@ void testWheels()
   }
 }
 
-void testPWMWheels()
+// check wheels with diffrent speed performence
+static void testPWMWheels()
 {
   MSG direction;
   direction.speed_left_wheel = 200;

@@ -4,6 +4,8 @@
 #include <vector>
 #include "main.h"
 #include "messages.h"
+#include <WiFi.h>
+using namespace std;
 
 // driver motor pins
 #define PWMA 32 // 12
@@ -17,6 +19,7 @@
 #define IN4 27 // 25
 
 #define STBY 26
+#define MAX_SPEED 255
 
 void setupPinCarModes();
 void processCarMovement(MSG directionMsg);

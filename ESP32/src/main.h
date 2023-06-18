@@ -2,16 +2,14 @@
 #define __MAIN_H
 
 // line follwer pins
-#define LFO_R 19
-#define LFI_R 18
-#define LF_C 5
-#define LFI_L 17
-#define LFO_L 16
 
 #define LED1 (23)
 #define LED2 (13)
 
-typedef enum
+#define ERROR (-1)
+#define SUCCESS (0)
+
+typedef enum ROBOT_STATE
 {
     CONNECT_TO_WIFI,
     CONNECT_TO_SERVER,

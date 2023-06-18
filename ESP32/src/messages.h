@@ -6,6 +6,7 @@
 #define SUCCESS (0)
 #define MAX_TEMPS_BEFORE_BREAK (10)
 
+
 typedef enum
 {
     DIRECTION_REQUEST = 1,
@@ -26,6 +27,7 @@ typedef enum
     FORWARD = 3,
     BACKWARD = 4,
     STOP = 5,
+    FINISH =6,
 } DIRECTION;
 
 typedef struct msg
