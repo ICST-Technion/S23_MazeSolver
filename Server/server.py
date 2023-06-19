@@ -61,14 +61,19 @@ class DirectionsServer:
             # start up server
             try:
                 s.bind((self.ip, self.port))
+                print("bound")
+                s.listen()
+                print("listening")
             except Exception as e:
                 logging.error(f"Server startup error: {repr(e)}")
 
             while True:
                 try:
                     logging.debug(f"Server Listening")
-                    s.listen()
+
+                    print("waiting for connection")
                     conn, addr = s.accept()
+                    print("connected")
                     with conn:
                         logging.debug(f"Connected by {addr}")
                         while True:

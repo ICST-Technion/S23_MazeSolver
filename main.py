@@ -124,7 +124,7 @@ class MazeManager(object):
         self.moved_forward = False
         self.directions = []
         self.cords = []
-        self.is_rotating = False
+        self.is_rotating = True
         self.last_turn = [0, 0]
         self.finished = False
         self.status = {
@@ -210,10 +210,13 @@ class MazeManager(object):
         try:
             self.finished = False
             self.status['calculating_path'] = True
+            self.robot.reset_angle_pid()
+            self.robot.reset_dir_pid()
             self._mi.load_aruco_image(self.cam.retrieve_image())
             self.maze_env = MazeSearchEnv(self._mi)
             self.agent = WeightedAStarAgent(self.maze_env, 0.5, Heuristic1())
             self.update_directions()
+            self.is_rotating = True
             self.status['calculating_path'] = False
         except:
             self.status['calculating_path'] = False
@@ -416,16 +419,18 @@ class MazeManager(object):
                 # if we are off by less than sensitivity then stop rotation
                 if abs(err) < Config.rotation_sensitivity:
                     self.is_rotating = False
+                    self.robot.max_speed = Config.max_forward_speed
                     # starting forward movement so reset old errors
                     self.robot.reset_dir_pid()
             else:
-                rot_vec = (self.cords[0][0] - self.last_turn[0], self.cords[0][1] - self.last_turn[1])
-                err = calculate_cos_theta(rot_vec, self.maze_env.get_direction_vector())
+                # rot_vec = (self.cords[0][0] - self.last_turn[0], self.cords[0][1] - self.last_turn[1])
+                # err = calculate_cos_theta(rot_vec, self.maze_env.get_direction_vector())
                 # TODO check this
-                if abs(err) > 145:
-                    self.is_rotating = True
-                    self.robot.reset_angle_pid()
-                    return
+                # if abs(err) > 145:
+                #     self.is_rotating = True
+                #     self.robot.reset_angle_pid()
+                #     self.update_step()
+                #     return
                 # update sideways position
                 try:
                     current_location = self.get_current_coords()
@@ -453,6 +458,11 @@ class MazeManager(object):
                         return
                     temp = (self.directions[0][0], get_distance_left(current_location, self.last_turn, self.cords[0], self.directions[0][0]))
                     self.directions[0] = temp
+                    distance_left = self.directions[0][1]
+                    self.robot.max_speed = min(int(Config.min_forward_speed +
+                                                   (abs(distance_left)/400)*Config.max_forward_speed),
+                                               Config.max_forward_speed)
+                    print("max speed: ", self.robot.max_speed)
                     # if we moved past or to the point we needed
                     if abs(self.directions[0][1]) <= Config.accuracy_threshold:
                         self.directions.pop(0)
