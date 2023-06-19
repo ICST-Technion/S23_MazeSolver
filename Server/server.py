@@ -57,7 +57,7 @@ class DirectionsServer:
 
     def start_server(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(10000)
+            s.settimeout(50000)
             # start up server
             try:
                 s.bind((self.ip, self.port))
@@ -159,9 +159,12 @@ class ControlServer:
             await asyncio.Future()  # Run indefinitely
 
     def run_server(self):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(self.start_webserver())
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(self.start_webserver())
+        except Exception as e:
+            print(e)
 
 
 if __name__ == "__main__":

@@ -21,24 +21,17 @@ def dist(c1, c2):
 
 # change dist here to be L1 not L2
 def get_distance_left(current_loc, src, dst, action_type):
-    print(f"action type: {action_type}")
     if src[0] == dst[0]:
         num_left = np.sign(dst[1] - current_loc[1])
         if num_left == np.sign(Config.action_vectors[action_type][1]):
-            print(f"case 1: {num_left}")
             return abs(dst[1] - current_loc[1])
         else:
-            print(f"case 2: {num_left}")
             return -abs(dst[1] - current_loc[1])
     else:
         num_left = np.sign(dst[0] - current_loc[0])
         if num_left == np.sign(Config.action_vectors[action_type][0]):
-            print(f"case 3: {num_left}")
-
             return abs(dst[0] - current_loc[0])
         else:
-            print(f"case 4: {num_left}")
-
             return -abs(dst[0] - current_loc[0])
 
 def calculate_cos_theta(next_direction, current_direction):
@@ -114,7 +107,6 @@ def distance_from_line(line_point1, line_point2, point):
 
 class MazeManager(object):
     def __init__(self):
-        self.last_action = "RIGHT"
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
         self.cam = Camera(camera_resolution=Config.camera_resolution,
                           frame_rate=Config.frame_rate)
@@ -410,13 +402,12 @@ class MazeManager(object):
             # gets current and last location and updates current location
             last_loc = self.get_last_coords()
             try:
-                current_location = self.get_current_coords()
+                current_forward_location = self.get_forward_coords()
             except:
                 print("issue with aruco")
                 self.stopped = True
                 return
-            current_forward_location = self.get_forward_coords()
-            if dist(self.maze_env.get_end_point(), current_forward_location) < 100:
+            if dist(self.maze_env.get_end_point(), current_forward_location) < Config.accuracy_threshold_for_complete:
                 self.finished = True
             # if rotating
             if self.is_rotating:
@@ -436,6 +427,13 @@ class MazeManager(object):
                     self.robot.reset_angle_pid()
                     return
                 # update sideways position
+                try:
+                    current_location = self.get_current_coords()
+                except:
+                    print("issue with aruco")
+                    self.stopped = True
+                    return
+                current_forward_location = self.get_forward_coords()
                 err = distance_from_line(self.last_turn, self.cords[0], current_forward_location)
                 if err < 0:
                     err = min(err+Config.line_width/2, 0)
@@ -447,8 +445,12 @@ class MazeManager(object):
                 num_traveled = dist(last_loc, current_location)
                 if self.moved_forward:
                     # update the amount to move the amount left
-                    print(f"distance from line: {get_distance_left(current_location, self.last_turn, self.cords[0], self.directions[0][0])}")
-                    print(f"current location: {current_location}\t\t last turn: {self.last_turn}\t\tnext cords: {self.cords[0]}")
+                    try:
+                        current_location = self.get_current_coords()
+                    except:
+                        print("issue with aruco")
+                        self.stopped = True
+                        return
                     temp = (self.directions[0][0], get_distance_left(current_location, self.last_turn, self.cords[0], self.directions[0][0]))
                     self.directions[0] = temp
                     # if we moved past or to the point we needed
@@ -459,7 +461,7 @@ class MazeManager(object):
                         self.is_rotating = True
                         # just started rotating so reset old errors
                         self.robot.reset_angle_pid()
-                    # self.update_parameters(num_expected, num_traveled, current_location, last_loc)
+                    self.update_parameters(num_expected, num_traveled, current_location, last_loc)
 
         else:
             self.stopped = True

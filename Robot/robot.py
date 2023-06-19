@@ -63,7 +63,7 @@ class Robot(object):
 
         return int(left_speed), int(right_speed)
 
-    def pid_to_rotation_speeds(self, angle, max_rotation=680, coef=2.5):
+    def pid_to_rotation_speeds(self, angle, max_rotation=680, coef=1):
         """
         translates PID value to rotation length
         :param angle: angle provided from PID

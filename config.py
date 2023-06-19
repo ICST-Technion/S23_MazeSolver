@@ -14,7 +14,7 @@ class Config:
     # Movement Configurations
 
     # num pixels to move before sampling camera
-    interval_size = 10
+    interval_size = 18
     # minimum degree error in rotation
     rotation_sensitivity = 2
     # minimum number of consecutive actions for solver to consider a movement
@@ -22,24 +22,26 @@ class Config:
     # minimum pixels for aruco to move to consider a movement
     moved_sensitivity = 30
     # number of pixels for car to be apart from its destination to consider as moved
-    accuracy_threshold = 15
+    accuracy_threshold = 5
     # speed to pass to the car for rotations
-    rotation_speed = 100
+    rotation_speed = 80
     # max speed in forward movement
-    max_forward_speed = 170
+    max_forward_speed = 150
     # error that occurs from difference in motors
     natural_error = 8
+    # number of pixels for the car to be apart from its destination to consider as finished
+    accuracy_threshold_for_complete = 40
 
     # PID params
 
-    kp = 2
+    kp = 1.5
     ki = .1
-    kd = 1.2
+    kd = 2
 
     # angle PID params
-    a_kp = 3.2
-    a_ki = .22
-    a_kd = 2
+    a_kp = 3
+    a_ki = .18
+    a_kd = 2.1
 
     # Directions Protocol Configurations
 
@@ -81,7 +83,7 @@ class Config:
     # resolution of images
     camera_resolution = (2592, 1936)
     # frame rate
-    frame_rate = 3
+    frame_rate = 10
     # width of actual maze, allows for better perspective transformation
     maze_width = 1189
     # height of actual maze, allows for better perspective transformation

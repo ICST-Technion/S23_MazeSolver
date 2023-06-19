@@ -95,15 +95,14 @@ class Camera:
         for frame in self.cam.capture_continuous(self.raw_capture, format="bgr", use_video_port=True):
             # grab the raw NumPy array representing the image, then initialize the timestamp
             # and occupied/unoccupied text
-            # self.picture_lock.acquire(blocking=True)
+            self.picture_lock.acquire()
             self._image = cv2.cvtColor(frame.array.reshape(
                 (self.cam.resolution[1], self.cam.resolution[0], 3)),
                 cv2.COLOR_BGR2GRAY)
-            # self.picture_lock.release()
+            self.picture_lock.release()
             # show the frame
 
             self.raw_capture.truncate(0)
-            # if the `q` key was pressed, break from the loop
             if not self.is_capturing:
                 break
 
