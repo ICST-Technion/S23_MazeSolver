@@ -1,3 +1,5 @@
+import numpy as np
+
 from distance_calibration.pid import PIDController
 
 
@@ -33,7 +35,8 @@ class Robot(object):
         return self.l_speed, self.r_speed
 
     def update_dist_left(self, dist_left):
-        self.max_speed = min(int(self.min_speed + (abs(dist_left)/400)*self.max_speed), self.max_speed)
+        self.max_speed = min(int(self.min_speed + np.exp(dist_left/20)), self.max_speed)
+        # self.max_speed = min(int(self.min_speed + (abs(dist_left)/400)*self.max_speed), self.max_speed)
 
     def get_rotation_speed(self, err):
         """
@@ -41,7 +44,8 @@ class Robot(object):
         :param err: error from wanted direction
         :return: duration to rotate for
         """
-        return int(min((abs(err)/180)*self.max_rotation_speed + self.min_rotation_speed, self.max_rotation_speed))
+        return int(min(np.exp(err/17) + self.min_rotation_speed, self.max_rotation_speed))
+        # return int(min((abs(err)/250)*self.max_rotation_speed + self.min_rotation_speed, self.max_rotation_speed))
         # return self.pid_to_rotation_speeds(self.pid_angle.calculate(err))
 
     def calc_speeds(self, err):
@@ -68,7 +72,6 @@ class Robot(object):
         else:
             right_speed = self.max_speed
             left_speed = min(right_speed + steering, self.max_speed) - self.natural_error
-
         return int(left_speed), int(right_speed)
 
     def pid_to_rotation_speeds(self, angle, max_rotation=680, coef=1):
