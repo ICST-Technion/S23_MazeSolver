@@ -75,9 +75,15 @@ void loop()
   case CONNECT_TO_SERVER:
     if (WiFi.status() == WL_CONNECTED)
     {
-      connectToServer(client, host, port);
-      //  wifi and server connection succeed
-      state = DO_COMMANDS;
+      if (connectToServer(client, host, port) == SUCCESS)
+      {
+        //  wifi and server connection succeed
+        state = DO_COMMANDS;
+      }
+      else
+      {
+        state = CONNECT_TO_SERVER;
+      }
     }
     else
     {
@@ -87,7 +93,7 @@ void loop()
     break;
   case DO_COMMANDS:
     // waiting 100 ms before requesting new commands. (we dont want to overflow the RPI with the uart)
-    delay(100);
+    // delay(20);
     // asking for new directions.
     requestDirection(&client);
     uint8_t rxBuffer;
@@ -120,7 +126,9 @@ void loop()
     break;
   }
   // before moving to the next direction - check that everything is fine. (client and Wifi connectivity)
-  state = checkConnectivity(client);
+  if (state == DO_COMMANDS){
+    state = checkConnectivity(client);
+  }
 }
 
 // check wheels performence

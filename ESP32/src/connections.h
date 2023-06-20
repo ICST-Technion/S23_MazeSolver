@@ -2,6 +2,9 @@
 #define __CONNECTIONS__H
 
 #define SERVER_CONNECTION_ERROR 0
+#include "main.h"
+#include "WiFiClient.h"
+
 /**
  * @brief connect to WiFi
  *  @param ssid - the name of the WiFi network
@@ -14,13 +17,13 @@
  * 4. if connection failed again, try again
  * 5. if connection failed again, try again
  *  6. if connection failed again, try again
-*/
+ */
 void connectToWiFi(const char *ssid, const char *password);
-//connectToServer function does :
-// 1. try to connect to server
-// 2. if connection failed, try again
+// connectToServer function does :
+//  1. try to connect to server
+//  2. if connection failed, try again
 
-void connectToServer(WiFiClient &client, const char *host, const uint16_t port);
+int connectToServer(WiFiClient &client, const char *host, const uint16_t port);
 ROBOT_STATE checkConnectivity(WiFiClient &client);
 
 #endif

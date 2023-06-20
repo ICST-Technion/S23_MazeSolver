@@ -22,15 +22,16 @@ void connectToWiFi(const char *ssid, const char *password)
 /**
  * connect to the server (RPI)/
  */
-void connectToServer(WiFiClient &client, const char *host, const uint16_t port)
+int connectToServer(WiFiClient &client, const char *host, const uint16_t port)
 {
-    int connectionTimeOut = 10000;
-    while (client.connect(host, port, connectionTimeOut) == SERVER_CONNECTION_ERROR)
+    int connectionTimeOut = 200;
+    if (client.connect(host, port, connectionTimeOut) != SERVER_CONNECTION_ERROR)
     {
-        Serial.println("Try to connect server");
-        delay(1000);
+        digitalWrite(LED2, LOW);
+        return 0;
     }
-    digitalWrite(LED2, LOW);
+    return -1;
+    
 }
 
 /**
