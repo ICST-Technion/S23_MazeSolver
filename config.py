@@ -15,19 +15,24 @@ class Config:
 
     # num pixels to move before sampling camera
     interval_size = 18
+    # amount of time to rotate for
+    rotation_interval_size = 12
     # minimum degree error in rotation
-    rotation_sensitivity = 2
+    rotation_sensitivity = 5
     # minimum number of consecutive actions for solver to consider a movement
     min_actions_for_movement = 10
     # minimum pixels for aruco to move to consider a movement
     moved_sensitivity = 30
     # number of pixels for car to be apart from its destination to consider as moved
-    accuracy_threshold = 3
+    accuracy_threshold = 4
     # speed to pass to the car for rotations
     rotation_speed = 60
     # max speed in forward movement
     max_forward_speed = 200
-    min_forward_speed = 60
+    min_forward_speed = 65
+    # max speeds for rotation
+    max_rotation_speed = 70
+    min_rotation_speed = 30
     # error that occurs from difference in motors
     natural_error = 0
     # number of pixels for the car to be apart from its destination to consider as finished

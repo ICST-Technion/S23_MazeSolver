@@ -123,6 +123,7 @@ class ControlServer:
         self.ip = ip
         self.port = port
         self.maze = maze
+        self.counter = 0
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
         logging.info("started new websocket server instance")
         print("started new websocket server instance")
@@ -151,12 +152,14 @@ class ControlServer:
                 self.maze.load_env(from_file=False)
 
             if message == "status":
-                status = {"type": "status", "status": self.maze.get_status()}
-                await websocket.send(json.dumps(status))
-                success, binary_data = cv2.imencode('.jpg', self.maze.get_status_image())
-                base64_data = base64.b64encode(binary_data).decode('utf-8')
-                status = {"type": "maze", "maze": base64_data}
-                await websocket.send(json.dumps(status))
+                if self.counter % 2 == 0:
+                    status = {"type": "status", "status": self.maze.get_status()}
+                    await websocket.send(json.dumps(status))
+                    success, binary_data = cv2.imencode('.jpg', self.maze.get_status_image())
+                    base64_data = base64.b64encode(binary_data).decode('utf-8')
+                    status = {"type": "maze", "maze": base64_data}
+                    await websocket.send(json.dumps(status))
+                self.counter += 1
 
     async def start_webserver(self):
         async with websockets.serve(self.handle_client, self.ip, self.port):

@@ -2,7 +2,8 @@ from distance_calibration.pid import PIDController
 
 
 class Robot(object):
-    def __init__(self, kp, ki, kd, a_kp, a_ki, a_kd, max_speed=200, natural_error=15):
+    def __init__(self, kp, ki, kd, a_kp, a_ki, a_kd, min_speed=50, max_speed=200,
+                 min_rotation_speed=50, max_rotation_speed=200, natural_error=15):
         """
         Creates robot and initializes PID controllers for rotation/forward motion
         """
@@ -13,6 +14,9 @@ class Robot(object):
         self.l_speed = 0
         self.r_speed = 0
         self.max_speed = max_speed
+        self.min_speed = min_speed
+        self.min_rotation_speed = min_rotation_speed
+        self.max_rotation_speed = max_rotation_speed
         self.natural_error = natural_error
 
     def set_position(self, loc, orientation):
@@ -28,13 +32,17 @@ class Robot(object):
     def get_speeds(self):
         return self.l_speed, self.r_speed
 
-    def get_rotation_length(self, err):
+    def update_dist_left(self, dist_left):
+        self.max_speed = min(int(self.min_speed + (abs(dist_left)/400)*self.max_speed), self.max_speed)
+
+    def get_rotation_speed(self, err):
         """
         gets the amount to rotate for given current error from wanted direction
         :param err: error from wanted direction
         :return: duration to rotate for
         """
-        return self.pid_to_rotation_speeds(self.pid_angle.calculate(err))
+        return int(min((abs(err)/180)*self.max_rotation_speed + self.min_rotation_speed, self.max_rotation_speed))
+        # return self.pid_to_rotation_speeds(self.pid_angle.calculate(err))
 
     def calc_speeds(self, err):
         """
