@@ -110,7 +110,6 @@ def threshold_image(img):
     blur = cv2.medianBlur(img, 155)
     thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
     thresh_with_lines = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-    cv2.imwrite("thresh1.jpg", thresh)
     contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     # Contour of maximum area
     largest_contour = max(contours, key=cv2.contourArea)
@@ -157,12 +156,11 @@ def load_image_post_aruco(im):
     :return: numpy array (warped), numpy array (warped without thresholding), numpy array (transformation matrix)
     """
     print("1.1")
-    thresh, mask, bounding_box = threshold_image(im)
+    thresh, mask = threshold_image(im)
     cv2.imwrite("thresh.jpg", thresh)
     cv2.imwrite("mask.jpg", mask)
-
     print("1.2")
-    warped, m = warp_image(bounding_box, mask)
+    warped, m = warp_image(thresh, mask)
     print("1.3")
     warped = skeletonize_image(warped).astype(np.uint8)
     print("1.4")
@@ -232,7 +230,6 @@ class MazeImage(object):
         :return: None
         """
         print("here")
-        cv2.imwrite("orig.jpg", img)
         self.data, warped_orig, self.warp_matrix = load_image_post_aruco(img)
         self.original_image = np.copy(self.data)
         self.aruco = None
@@ -330,15 +327,3 @@ class MazeImage(object):
         return forward['centerY'] - backward['centerY'], forward['centerX'] - backward['centerX']
 
 
-print("1.1")
-im = cv2.imread('orig.jpg', cv2.IMREAD_GRAYSCALE)
-thresh, mask = threshold_image(im)
-cv2.imwrite("thresh.jpg", thresh)
-cv2.imwrite("mask.jpg", mask)
-print("1.2")
-warped, m = warp_image(thresh, mask)
-print("1.3")
-warped = skeletonize_image(warped).astype(np.uint8)
-print("1.4")
-warped_original = warp_image_saved_matrix(im, m)
-cv2.imwrite("warped.jpg", warped_original)
