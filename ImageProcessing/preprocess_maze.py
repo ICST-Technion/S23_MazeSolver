@@ -60,7 +60,7 @@ def cyclic_intersection_pts(pts):
     return np.array(cyclic_pts)
 
 
-def warp_image(img, mask, buffer=0):
+def warp_image(img, mask, buffer=-50):
     """
     warps the image so the corners are the maze corners
     :param img: img to warp
@@ -107,7 +107,7 @@ def threshold_image(img):
     :param img: image to threshold
     :return: numpy array (thresholded image), numpy array (mask)
     """
-    blur = cv2.medianBlur(img, 45)
+    blur = cv2.medianBlur(img, 155)
     thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
     thresh_with_lines = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
     cv2.imwrite("thresh1.jpg", thresh)
@@ -341,4 +341,4 @@ print("1.3")
 warped = skeletonize_image(warped).astype(np.uint8)
 print("1.4")
 warped_original = warp_image_saved_matrix(im, m)
-cv2.imwrite("warped.jpg", warped)
+cv2.imwrite("warped.jpg", warped_original)
