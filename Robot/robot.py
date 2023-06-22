@@ -31,11 +31,12 @@ class Robot(object):
     def reset_dir_pid(self):
         self.pid_controller.reset()
 
+
     def get_speeds(self):
         return self.l_speed, self.r_speed
 
     def update_dist_left(self, dist_left):
-        self.max_speed = min(int(self.min_speed + np.exp(dist_left/20)), self.max_speed)
+        self.max_speed = min(int(self.min_speed + np.exp(dist_left/50+1)), self.max_speed)
         # self.max_speed = min(int(self.min_speed + (abs(dist_left)/400)*self.max_speed), self.max_speed)
 
     def get_rotation_speed(self, err):
@@ -44,7 +45,7 @@ class Robot(object):
         :param err: error from wanted direction
         :return: duration to rotate for
         """
-        return int(min(np.exp(err/17) + self.min_rotation_speed, self.max_rotation_speed))
+        return int(min(np.exp(err/25) + self.min_rotation_speed, self.max_rotation_speed))
         # return int(min((abs(err)/250)*self.max_rotation_speed + self.min_rotation_speed, self.max_rotation_speed))
         # return self.pid_to_rotation_speeds(self.pid_angle.calculate(err))
 
@@ -62,6 +63,7 @@ class Robot(object):
         takes in PID value and gets the left and right wheel speeds to account for steer
         :return left speed, right speed
         """
+        print(f"max speed: {self.max_speed}")
         if steering > max_steering_angle:
             steering = max_steering_angle
         if steering < -max_steering_angle:
@@ -72,7 +74,7 @@ class Robot(object):
         else:
             right_speed = self.max_speed
             left_speed = min(right_speed + steering, self.max_speed) - self.natural_error
-        return int(left_speed), int(right_speed)
+        return max(int(left_speed), 0), max(int(right_speed), 0)
 
     def pid_to_rotation_speeds(self, angle, max_rotation=680, coef=1):
         """

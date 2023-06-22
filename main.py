@@ -4,6 +4,7 @@ import logging
 import time
 import threading
 import math
+import signal
 
 from Camera.camera import Camera
 from config import Config
@@ -109,7 +110,7 @@ class MazeManager(object):
     def __init__(self):
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
         self.cam = Camera(camera_resolution=Config.camera_resolution,
-                          frame_rate=Config.frame_rate)
+                          frame_rate=Config.frame_rate, zoom=Config.zoom)
         self._mi = MazeImage(Config.aruco_dict)
         self.agent = None
         self.maze_env = None
@@ -119,6 +120,7 @@ class MazeManager(object):
                            max_rotation_speed=Config.max_rotation_speed, min_rotation_speed=Config.min_rotation_speed,
                            natural_error=Config.natural_error)
         self.movement_coef = 10
+        self.rotation_err = 0
         self.server = DirectionsServer(Config.host, Config.port, self)
         self.control_server = ControlServer(Config.host, Config.webserver_port, self)
         self.last_interval = 0
@@ -128,6 +130,7 @@ class MazeManager(object):
         self.is_rotating = True
         self.last_turn = [0, 0]
         self.finished = False
+        self.is_running = True
         self.status = {
             "connection": True,
             "path_found": False,
@@ -142,6 +145,13 @@ class MazeManager(object):
         :return: dict
         """
         return self.status
+
+    def to_run(self):
+        return self.is_running
+
+    def end_run(self):
+        self.is_running = False
+        self.cam.stop_live_capture()
 
     def get_image(self):
         """
@@ -188,14 +198,18 @@ class MazeManager(object):
         :param from_file: whether to load from file or not
         :return: None
         """
+        print("1")
         self.stopped = True
         self.status['path_found'] = False
         # loads maze without aruco
         if from_file:
             im = cv2.imread(Config.image_file, cv2.IMREAD_GRAYSCALE)
         else:
+            print("2")
             im = self.cam.retrieve_image()
+        print("3")
         self._mi.load_initial_image(im)
+        print("4")
         self.status["initial_maze_loaded"] = True
 
     def restart_maze(self):
@@ -203,6 +217,7 @@ class MazeManager(object):
         try:
             self.finished = False
             self.status['calculating_path'] = True
+            self.status['path_found'] = False
             self.robot.reset_angle_pid()
             self.robot.reset_dir_pid()
             self._mi.load_aruco_image(self.cam.retrieve_image())
@@ -297,7 +312,6 @@ class MazeManager(object):
             self.status['path_found'] = True
             logging.debug(f"found path: {cost != -1}")
             smoothed_actions = self.process_actions(actions)
-            print(smoothed_actions)
 
             self.cords = self.maze_env.actions_to_cords_with_weight(smoothed_actions)
             self.last_turn = self.cords.pop(0)
@@ -317,7 +331,6 @@ class MazeManager(object):
         new_actions = []
         counter = 0
         action_type = actions[0]
-        all_actions = []
         for a in actions:
             if a != action_type:
                 if "DIAG" in a:
@@ -345,43 +358,40 @@ class MazeManager(object):
         :return: (direction_type: int, left_speed: int, right_speed: int, duration: int)
 
         """
-        if not self.directions:
-            return Config.actions_to_num["STAY"], 0, 0, 0
+        # rot_vec = (self.cords[0][0] - self.last_turn[0], self.cords[0][1] - self.last_turn[1])
+        # err = calculate_cos_theta(rot_vec, self.maze_env.get_direction_vector())
+        # print(f"diff: {err}")
+        # return Config.actions_to_num["STAY"], 0, 0, 0
+        #
+        # if not self.directions:
+        #     return Config.actions_to_num["STAY"], 0, 0, 0
 
         if self.is_rotating:
             try:
-                rot_vec = (self.cords[0][0] - self.last_turn[0], self.cords[0][1]-self.last_turn[1])
-                err = calculate_cos_theta(rot_vec, self.maze_env.get_direction_vector())
-                rot_speed = self.robot.get_rotation_speed(err)
-                print(f"rotation speed: {rot_speed}")
-                if err > 0:
+                rot_speed = self.robot.get_rotation_speed(abs(self.rotation_err))
+                if self.rotation_err > 0:
                     return Config.actions_to_num["LEFT"], rot_speed, rot_speed, Config.rotation_interval_size
-                if err < 0:
+                if self.rotation_err < 0:
                     return Config.actions_to_num["RIGHT"], rot_speed, rot_speed, Config.rotation_interval_size
                 return Config.actions_to_num["STAY"], 0, 0, int(0)
             except Exception as e:
                 print(e)
         else:
             if self.directions[0][1] > 0:
-                amount = min(self.directions[0][1], Config.interval_size)
-                self.moved_forward = True
-                self.last_interval = amount
-                speed_l, speed_r = self.robot.get_speeds()
-                # reduce speed if we are close to point
-                if amount < 25:
-                    speed_l /= 2
-                    speed_r /= 2
-                return Config.actions_to_num["UP"], int(speed_l), int(speed_r), int(self.movement_coef * amount)
+                action = Config.actions_to_num["UP"]
             else:
-                amount = min(-self.directions[0][1], Config.interval_size)
-                self.moved_forward = True
-                self.last_interval = amount
-                speed_l, speed_r = self.robot.get_speeds()
-                # reduce speed if we are close to point
-                if amount < 25:
-                    speed_l /= 2
-                    speed_r /= 2
-                return Config.actions_to_num["DOWN"], int(speed_r), int(speed_l), int(self.movement_coef * amount)
+                action = Config.actions_to_num["DOWN"]
+            amount = min(abs(self.directions[0][1]), Config.interval_size)
+            self.last_interval = amount
+            speed_l, speed_r = self.robot.get_speeds()
+            # reduce speed if we are close to point
+            print(f"speed L, R: {speed_l} , {speed_r}")
+            return action, int(speed_l), int(speed_r), int(self.movement_coef * amount)
+
+    def did_reach_end(self, current_loc):
+        if dist(self.maze_env.get_end_point(), current_loc) < Config.accuracy_threshold_for_complete:
+            return True
+        return False
 
     def update_step(self):
         """
@@ -396,65 +406,49 @@ class MazeManager(object):
         """
         # if we have directions left and not in stand by mode
         if self.directions and not self.stopped:
-            # gets current and last location and updates current location
-            last_loc = self.get_last_coords()
-            try:
-                current_forward_location = self.get_forward_coords()
-            except:
-                print("issue with aruco")
-                self.stopped = True
-                return
-            if dist(self.maze_env.get_end_point(), current_forward_location) < Config.accuracy_threshold_for_complete:
-                self.finished = True
-            # if rotating
+            # check if reached end
             if self.is_rotating:
+                self.reload_image()
                 rot_vec = (self.cords[0][0] - self.last_turn[0], self.cords[0][1]-self.last_turn[1])
-                err = calculate_cos_theta(rot_vec, self.maze_env.get_direction_vector())
+                self.rotation_err = calculate_cos_theta(rot_vec, self.maze_env.get_direction_vector())
                 # if we are off by less than sensitivity then stop rotation
-                if abs(err) < Config.rotation_sensitivity:
+                if abs(self.rotation_err) < Config.rotation_sensitivity:
                     self.is_rotating = False
                     self.robot.max_speed = Config.max_forward_speed
                     # starting forward movement so reset old errors
                     self.robot.reset_dir_pid()
+                    self.update_step()
             else:
+                current_forward_location = self.get_forward_coords()
+                if self.did_reach_end(current_forward_location):
+                    self.finished = True
+                    return
+                err = distance_from_line(self.last_turn, self.cords[0], current_forward_location)
+                if err < 0:
+                    err = min(err+Config.line_width/2, 0)
+                if err > 0:
+                    err = max(err-Config.line_width/2, 0)
+                self.robot.calc_speeds(err)
+                # update the amount to move to the amount left
                 try:
                     current_location = self.get_current_coords()
                 except:
                     print("issue with aruco")
                     self.stopped = True
                     return
-                current_forward_location = self.get_forward_coords()
-                err = distance_from_line(self.last_turn, self.cords[0], current_forward_location)
-                if err < 0:
-                    err = min(err+Config.line_width/2, 0)
-                if err > 0:
-                    err = max(err-Config.line_width/2, 0)
-                self.robot.calc_speeds(err, )
-                # update forward coefficient and update directions if was off
-                num_expected = self.last_interval
-                num_traveled = dist(last_loc, current_location)
-                if self.moved_forward:
-                    # update the amount to move the amount left
-                    try:
-                        current_location = self.get_current_coords()
-                    except:
-                        print("issue with aruco")
-                        self.stopped = True
-                        return
-                    temp = (self.directions[0][0], get_distance_left(current_location, self.last_turn, self.cords[0], self.directions[0][0]))
-                    self.directions[0] = temp
-                    distance_left = self.directions[0][1]
-                    self.robot.update_dist_left(distance_left)
-                    # if we moved past or to the point we needed
-                    if abs(self.directions[0][1]) <= Config.accuracy_threshold:
-                        self.directions.pop(0)
-                        self.last_turn = self.cords.pop(0)
-                        # we finished moving in direction then start rotation
-                        self.is_rotating = True
-                        # just started rotating so reset old errors
-                        self.robot.reset_angle_pid()
-                    self.update_parameters(num_expected, num_traveled, current_location, last_loc)
-
+                temp = (self.directions[0][0], get_distance_left(current_location, self.last_turn, self.cords[0], self.directions[0][0]))
+                self.directions[0] = temp
+                distance_left = self.directions[0][1]
+                self.robot.update_dist_left(distance_left)
+                # if we reached the point we wanted
+                if abs(self.directions[0][1]) <= Config.accuracy_threshold:
+                    self.directions.pop(0)
+                    self.last_turn = self.cords.pop(0)
+                    # we finished moving in direction then start rotation
+                    self.is_rotating = True
+                    # just started rotating so reset old errors
+                    self.robot.reset_angle_pid()
+                    self.update_step()
         else:
             self.stopped = True
 

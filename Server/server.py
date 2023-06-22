@@ -9,9 +9,11 @@ from config import Config
 import base64
 import json
 
+
 def dist(c1, c2):
     return math.sqrt((c1[0] - c2[0]) ** 2 +
-              (c1[1] - c2[1]) ** 2)
+                     (c1[1] - c2[1]) ** 2)
+
 
 class DirectionsServer:
     def __init__(self, ip, port, maze):
@@ -23,7 +25,6 @@ class DirectionsServer:
 
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
         logging.info("started new server instance")
-
 
     def updating_started(self):
         self.lock.acquire()
@@ -50,12 +51,14 @@ class DirectionsServer:
                 }
 
     def create_message(self, opcode, src, dst, dir, l, r, time):
-        msg = opcode.to_bytes(1, "little") + src.to_bytes(1, "little") + dst.to_bytes(1, "little")\
+        msg = opcode.to_bytes(1, "little") + src.to_bytes(1, "little") + dst.to_bytes(1, "little") \
               + dir.to_bytes(1, "little") \
               + l.to_bytes(4, "little") + r.to_bytes(4, "little") + time.to_bytes(4, "little")
         return msg
 
     def start_server(self):
+        if not self.maze.to_run():
+            return
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(50000)
             # start up server
@@ -86,16 +89,16 @@ class DirectionsServer:
 
                             if parsed_message['opcode'] == Config.opcodes['DIRECTION_REQUEST']:
 
-                                if self.maze.is_finished():
-                                    logging.debug("server stopped")
-                                    next_direction = (Config.finished, 0, 0, 0)
-                                elif self.maze.is_stopped():
+                                if self.maze.is_stopped():
                                     logging.debug("server stopped")
                                     next_direction = (Config.stay, 0, 0, 0)
                                 else:
                                     # recalculate coefficient and confidence from last movement
                                     self.maze.update_step()
-                                    if self.lock.locked():
+                                    if self.maze.is_finished():
+                                        logging.debug("server stopped")
+                                        next_direction = (Config.finished, 0, 0, 0)
+                                    elif self.lock.locked():
                                         logging.debug("updating in progress")
                                         next_direction = (Config.stay, 0, 0, 0)
                                     else:  # get next direction
@@ -110,10 +113,7 @@ class DirectionsServer:
                                                           )
                                 # send data to bot and log to console
                                 conn.sendall(msg)
-                                data = conn.recv(1024)
-                                parsed_message = self.parse_message(data)
-                                if parsed_message['opcode'] == Config.opcodes['ESP32_ACK']:
-                                    logging.debug(f"Received ACK")
+
                 except Exception as e:
                     print(e)
 
@@ -123,10 +123,10 @@ class ControlServer:
         self.ip = ip
         self.port = port
         self.maze = maze
+        self.stop_counter = 0
         logging.basicConfig(filename=Config.logging_file, level=logging.DEBUG)
         logging.info("started new websocket server instance")
         print("started new websocket server instance")
-
 
     def start_server(self):
         print("starting control server")
@@ -140,7 +140,14 @@ class ControlServer:
 
             if message == "stop":
                 print("got command: stop")
+                self.stop_counter += 1
                 self.maze.stop_solver()
+                if self.stop_counter == 10:
+                    self.maze.end_run()
+                    await asyncio.sleep(1)
+                    asyncio.get_running_loop().stop()
+            elif message != "status":
+                self.stop_counter = 0
 
             if message == "reset":
                 print("got command: reset")

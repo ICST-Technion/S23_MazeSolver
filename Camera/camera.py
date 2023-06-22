@@ -12,9 +12,10 @@ provides basic interface with the raspberry pi camera that fits the better the r
 """
 
 class Camera:
-    def __init__(self, camera_resolution=(2592, 1936), frame_rate=20):
+    def __init__(self, camera_resolution=(2592, 1936), frame_rate=20, zoom=(0.0, 0.0, 1.0, 1.0)):
         # initialize camera configurations
         self.cam = PiCamera()
+        self.cam.zoom = zoom
         self.cam.resolution = camera_resolution
         # variable that holds the current grayscale image
         self._image = np.empty((self.cam.resolution[1], self.cam.resolution[0]), dtype=np.uint8)
@@ -26,6 +27,7 @@ class Camera:
         self.is_capturing = False
         self.cam.framerate = frame_rate
         self.raw_capture = PiRGBArray(self.cam, size=camera_resolution)
+        self.capture_time = time.time()
         time.sleep(0.5)
 
     def retrieve_image(self):
@@ -99,6 +101,7 @@ class Camera:
             self._image = cv2.cvtColor(frame.array.reshape(
                 (self.cam.resolution[1], self.cam.resolution[0], 3)),
                 cv2.COLOR_BGR2GRAY)
+            self.capture_time = time.time()
             self.picture_lock.release()
             # show the frame
 

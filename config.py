@@ -1,6 +1,5 @@
 import cv2
 
-
 class Config:
     # Server Configurations
 
@@ -18,7 +17,7 @@ class Config:
     # amount of time to rotate for
     rotation_interval_size = 12
     # minimum degree error in rotation
-    rotation_sensitivity = 5
+    rotation_sensitivity = 8
     # minimum number of consecutive actions for solver to consider a movement
     min_actions_for_movement = 10
     # minimum pixels for aruco to move to consider a movement
@@ -28,11 +27,11 @@ class Config:
     # speed to pass to the car for rotations
     rotation_speed = 60
     # max speed in forward movement
-    max_forward_speed = 205
-    min_forward_speed = 65
+    max_forward_speed = 125
+    min_forward_speed = 35
     # max speeds for rotation
     max_rotation_speed = 70
-    min_rotation_speed = 35
+    min_rotation_speed = 40
     # error that occurs from difference in motors
     natural_error = 0
     # number of pixels for the car to be apart from its destination to consider as finished
@@ -40,9 +39,9 @@ class Config:
 
     # PID params
 
-    kp = 1.5
+    kp = 0.8
     ki = .1
-    kd = 2
+    kd = 3
 
     # angle PID params
     a_kp = 3
@@ -88,6 +87,9 @@ class Config:
     image_file = "./saved.jpg"
     # resolution of images
     camera_resolution = (2592, 1936)
+    # the zoom of the camera, dictates the portion of image to capture (from 0 to 1 is default)
+    # (x, y, width, height)
+    zoom = (0.22, 0.0, 0.7, 0.8)
     # frame rate
     frame_rate = 9
     # width of actual maze, allows for better perspective transformation
@@ -102,5 +104,6 @@ class Config:
     # the aruCo ID used for the front of the car
     FORWARD_CAR_ID = 1
     # the aruCo ID used for the end
-    END_ID = 0
+    END_ID = 2
+
 
