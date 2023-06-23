@@ -60,7 +60,7 @@ def cyclic_intersection_pts(pts):
     return np.array(cyclic_pts)
 
 
-def warp_image(img, mask, buffer=-50):
+def warp_image(img, mask, buffer=-25):
     """
     warps the image so the corners are the maze corners
     :param img: img to warp

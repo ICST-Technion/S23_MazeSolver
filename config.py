@@ -30,8 +30,8 @@ class Config:
     max_forward_speed = 125
     min_forward_speed = 35
     # max speeds for rotation
-    max_rotation_speed = 70
-    min_rotation_speed = 40
+    max_rotation_speed = 60
+    min_rotation_speed = 35
     # error that occurs from difference in motors
     natural_error = 0
     # number of pixels for the car to be apart from its destination to consider as finished

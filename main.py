@@ -119,7 +119,7 @@ class MazeManager(object):
                            max_speed=Config.max_forward_speed, min_speed=Config.min_forward_speed,
                            max_rotation_speed=Config.max_rotation_speed, min_rotation_speed=Config.min_rotation_speed,
                            natural_error=Config.natural_error)
-        self.movement_coef = 10
+        self.movement_coef = 8
         self.rotation_err = 0
         self.server = DirectionsServer(Config.host, Config.port, self)
         self.control_server = ControlServer(Config.host, Config.webserver_port, self)
@@ -358,14 +358,6 @@ class MazeManager(object):
         :return: (direction_type: int, left_speed: int, right_speed: int, duration: int)
 
         """
-        # rot_vec = (self.cords[0][0] - self.last_turn[0], self.cords[0][1] - self.last_turn[1])
-        # err = calculate_cos_theta(rot_vec, self.maze_env.get_direction_vector())
-        # print(f"diff: {err}")
-        # return Config.actions_to_num["STAY"], 0, 0, 0
-        #
-        # if not self.directions:
-        #     return Config.actions_to_num["STAY"], 0, 0, 0
-
         if self.is_rotating:
             try:
                 rot_speed = self.robot.get_rotation_speed(abs(self.rotation_err))
