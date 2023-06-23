@@ -60,7 +60,25 @@ def cyclic_intersection_pts(pts):
     return np.array(cyclic_pts)
 
 
-def warp_image(img, mask, buffer=-25):
+def get_best_fit_quad(contour):
+    hull = cv2.convexHull(contour, False)
+    best_points = []
+    best_area = 0
+    for i in range(len(hull)):
+        x1, y1 = hull[i][0]
+        for j in range(i+1, len(hull)):
+            x2, y2 = hull[j][0]
+            for k in range(j+1, len(hull)):
+                x3, y3 = hull[k][0]
+                for l in range(k+1, len(hull)):
+                    x4, y4 = hull[l][0]
+                    a = (x1*y2 - x2*y1) + (x2*y3 - x3*y2) + (x3*y4 - x4*y3) + (x4*y1 - x1*y4)
+                    if a > best_area:
+                        best_points = [(x1, y1), (x2, y2), (x3, y3), (x4, y4)]
+                        best_area = a
+    return np.array(best_points)
+
+def warp_image(img, mask, buffer=30):
     """
     warps the image so the corners are the maze corners
     :param img: img to warp
@@ -68,14 +86,17 @@ def warp_image(img, mask, buffer=-25):
     :param buffer: amount of padding to give around the recognized rectangle
     :return: warped image, transformation matrix
     """
-    contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # Contour of maximum area
     largest_contour = max(contours, key=cv2.contourArea)
-    rect = cv2.minAreaRect(largest_contour)
-    box = cv2.boxPoints(rect)
-    corners = np.int0(box)
+    corners = get_best_fit_quad(largest_contour)
+    # cv2.imwrite("hull.jpg", cv2.drawContours(img, [np.array(best_points)], 0, 255, 2))
+
+    # rect = cv2.minAreaRect(largest_contour)
+    # box = cv2.boxPoints(rect)
+    # corners = np.int0(box)
     corners = corners.reshape(corners.shape[0], 2).astype(np.int32)
-    corners = cyclic_intersection_pts(corners)
+    corners = cyclic_intersection_pts(np.array(corners))
     # Get rotated rect dimensions
     dstPts = [[0, 0], [Config.maze_width, 0], [Config.maze_width, Config.maze_height], [0, Config.maze_height]]
     corners[0] -= buffer
@@ -327,3 +348,15 @@ class MazeImage(object):
         return forward['centerY'] - backward['centerY'], forward['centerX'] - backward['centerX']
 
 
+# print("1.1")
+# im = cv2.imread("orig.jpg", cv2.IMREAD_GRAYSCALE)
+# thresh, mask = threshold_image(im)
+# cv2.imwrite("thresh.jpg", thresh)
+# cv2.imwrite("mask.jpg", mask)
+# print("1.2")
+# warped, m = warp_image(thresh, mask)
+# print("1.3")
+# warped = skeletonize_image(warped).astype(np.uint8)
+# print("1.4")
+# warped_original = warp_image_saved_matrix(im, m)
+# cv2.imwrite("warped.jpg", warped_original)
