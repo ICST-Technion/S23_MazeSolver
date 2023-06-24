@@ -201,6 +201,7 @@ class MazeManager(object):
         print("1")
         self.stopped = True
         self.status['path_found'] = False
+        self.status['initial_maze_loaded'] = False
         # loads maze without aruco
         if from_file:
             im = cv2.imread(Config.image_file, cv2.IMREAD_GRAYSCALE)

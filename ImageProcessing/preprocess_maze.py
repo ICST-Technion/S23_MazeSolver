@@ -186,7 +186,7 @@ def load_image_post_aruco(im):
     warped = skeletonize_image(warped).astype(np.uint8)
     print("1.4")
     warped_original = warp_image_saved_matrix(im, m)
-    cv2.imwrite("warped.jpg", warped_original)
+    cv2.imwrite("warped-convex.jpg", warped_original)
     return warped, warped_original, m
 
 
