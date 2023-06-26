@@ -131,6 +131,8 @@ def threshold_image(img):
     """
 
     blur = cv2.medianBlur(img, 15)
+    # img, value to give thresh, type of adaptive, type of thresh, block size (bigger takes more into account)
+    # which means less sensitive in specific areas, subtracted from mean used to fine tune
     thresh = cv2.adaptiveThreshold(blur,255,cv2.ADAPTIVE_THRESH_MEAN_C,\
         cv2.THRESH_BINARY, 2501, -22)
 
