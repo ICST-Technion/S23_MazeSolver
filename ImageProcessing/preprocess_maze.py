@@ -122,14 +122,19 @@ def warp_image_saved_matrix(img, m):
     return out
 
 
+
 def threshold_image(img):
     """
     thresholds an image with a maze and returns the image and the mask for the maze
     :param img: image to threshold
     :return: numpy array (thresholded image), numpy array (mask)
     """
-    blur = cv2.medianBlur(img, 155)
-    thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+
+    blur = cv2.medianBlur(img, 51)
+    thresh = cv2.adaptiveThreshold(blur,255,cv2.ADAPTIVE_THRESH_MEAN_C,\
+        cv2.THRESH_BINARY, 2501, -28)
+
+    # Threshold and morph close
     thresh_with_lines = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
     contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     # Contour of maximum area
@@ -347,7 +352,7 @@ class MazeImage(object):
 
         return forward['centerY'] - backward['centerY'], forward['centerX'] - backward['centerX']
 
-
+#
 # print("1.1")
 # im = cv2.imread("orig.jpg", cv2.IMREAD_GRAYSCALE)
 # thresh, mask = threshold_image(im)
@@ -359,4 +364,4 @@ class MazeImage(object):
 # warped = skeletonize_image(warped).astype(np.uint8)
 # print("1.4")
 # warped_original = warp_image_saved_matrix(im, m)
-# cv2.imwrite("warped.jpg", warped_original)
+# cv2.imwrite("warped-convex.jpg", warped_original)
