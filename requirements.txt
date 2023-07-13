@@ -3,6 +3,5 @@ numpy==1.21.2
 opencv_python==4.7.0.68
 picamera==1.13
 Pillow==9.4.0
-Pillow==9.5.0
 scikit_image==0.19.3
 websockets==11.0.3
