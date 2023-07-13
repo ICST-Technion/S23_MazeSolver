@@ -18,6 +18,7 @@ Features Include:​
 - [Distance-calibration](#distance-calibration)
 - [Maze-controller-app](#maze-controller-app)
 - [Hardware individual tests](#hardware-individual-tests)
+- [Project Poster](#project-poster)
 
 ## Camera
 
@@ -51,3 +52,7 @@ The maze-controller-app is a reactive application that allows users to control t
 
 The hardware individual tests module is used to check each component of the hardware independently. It includes various tests to ensure the proper functioning of different hardware components.
 
+## Project Poster:
+![poster](https://github.com/ordavid-s/MazeSolver/assets/73240562/d23f6bc4-4e0a-4a0d-8d07-c5c4173bc9de)
+
+This project is part of ICST - The Interdisciplinary Center for Smart Technologies, Taub Faculty of Computer Science, Technion https://icst.cs.technion.ac.il/
