@@ -1,4 +1,5 @@
 # MazeSolver
+## Created by Or-David-Shafran, Sahar Elbaz and Sagiv Tamir.
 
 ## Description
 An ESP rover and Raspberry Pi Control Server using computer vision to solve a line maze.
