@@ -7,7 +7,7 @@ class PIDController:
         self.kp = kp  # Proportional gain
         self.ki = ki  # Integral gain,
         self.kd = kd  # Derivative gain
-
+        self.first_calculation = 0
         self.last_error = 0  # Error from the previous iteration
         self.integral = 0  # Accumulated error
 
@@ -18,6 +18,7 @@ class PIDController:
         """
         self.last_error = 0
         self.integral = 0
+        self.first_calculation = 0
 
     def calculate(self, error, dt=1):
         """
@@ -38,8 +39,8 @@ class PIDController:
 
         # Calculate the output
         output = self.kp*proportional + self.ki*self.integral + self.kd*derivative
-
+        output *= self.first_calculation
         # Store the current error for the next iteration
         self.last_error = error
-
+        self.first_calculation = 1
         return output

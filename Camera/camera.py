@@ -12,9 +12,10 @@ provides basic interface with the raspberry pi camera that fits the better the r
 """
 
 class Camera:
-    def __init__(self, camera_resolution=(2592, 1936)):
+    def __init__(self, camera_resolution=(2592, 1936), frame_rate=20, zoom=(0.0, 0.0, 1.0, 1.0)):
         # initialize camera configurations
         self.cam = PiCamera()
+        self.cam.zoom = zoom
         self.cam.resolution = camera_resolution
         # variable that holds the current grayscale image
         self._image = np.empty((self.cam.resolution[1], self.cam.resolution[0]), dtype=np.uint8)
@@ -24,8 +25,9 @@ class Camera:
         self.picture_lock = threading.Lock()
         # flag that indicates whether camera is capturing pictures
         self.is_capturing = False
-        self.cam.framerate = 32
-        rawCapture = PiRGBArray(camera, size=(640, 480))
+        self.cam.framerate = frame_rate
+        self.raw_capture = PiRGBArray(self.cam, size=camera_resolution)
+        self.capture_time = time.time()
         time.sleep(0.5)
 
     def retrieve_image(self):
@@ -83,18 +85,30 @@ class Camera:
         t.start()
 
     def start_live_video_capture(self):
-        for frame in self.camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+        """
+        initializes a live capture in a non-blocking manner
+        :return: None
+        """
+        self.is_capturing = True
+        t = threading.Thread(target=self.live_video_capture)
+        t.start()
+
+    def live_video_capture(self):
+        for frame in self.cam.capture_continuous(self.raw_capture, format="bgr", use_video_port=True):
             # grab the raw NumPy array representing the image, then initialize the timestamp
             # and occupied/unoccupied text
-            image = frame.array
+            self.picture_lock.acquire()
+            self._image = cv2.cvtColor(frame.array.reshape(
+                (self.cam.resolution[1], self.cam.resolution[0], 3)),
+                cv2.COLOR_BGR2GRAY)
+            self.capture_time = time.time()
+            self.picture_lock.release()
             # show the frame
-            cv2.imshow("Frame", image)
-            key = cv2.waitKey(1) & 0xFF
-            # clear the stream in preparation for the next frame
-            rawCapture.truncate(0)
-            # if the `q` key was pressed, break from the loop
-            if key == ord("q"):
+
+            self.raw_capture.truncate(0)
+            if not self.is_capturing:
                 break
+
 
     def stop_live_capture(self):
         """

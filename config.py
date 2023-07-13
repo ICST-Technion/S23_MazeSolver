@@ -1,6 +1,5 @@
 import cv2
 
-
 class Config:
     # Server Configurations
 
@@ -14,28 +13,38 @@ class Config:
     # Movement Configurations
 
     # num pixels to move before sampling camera
-    interval_size = 50
+    interval_size = 18
+    # amount of time to rotate for
+    rotation_interval_size = 12
     # minimum degree error in rotation
-    rotation_sensitivity = 2
+    rotation_sensitivity = 8
     # minimum number of consecutive actions for solver to consider a movement
     min_actions_for_movement = 10
     # minimum pixels for aruco to move to consider a movement
     moved_sensitivity = 30
     # number of pixels for car to be apart from its destination to consider as moved
-    accuracy_threshold = 15
+    accuracy_threshold = 7
     # speed to pass to the car for rotations
-    rotation_speed = 100
+    rotation_speed = 60
     # max speed in forward movement
-    max_forward_speed = 200
+    max_forward_speed = 125
+    min_forward_speed = 35
+    # max speeds for rotation
+    max_rotation_speed = 60
+    min_rotation_speed = 35
+    # error that occurs from difference in motors
+    natural_error = 0
+    # number of pixels for the car to be apart from its destination to consider as finished
+    accuracy_threshold_for_complete = 60
 
     # PID params
 
-    kp = 2
-    ki = .25
-    kd = 0.5
+    kp = 0.8
+    ki = .1
+    kd = 3
 
     # angle PID params
-    a_kp = 3.2
+    a_kp = 3
     a_ki = .1
     a_kd = 2
 
@@ -51,6 +60,8 @@ class Config:
     # dict mapping names to values
     actions_to_num = {"UP": 3, "DOWN": 4, "LEFT": 2, "RIGHT": 1,
                       "DIAG_UL": 5, "DIAG_UR": 5, "DIAG_DL": 5, "DIAG_DR": 5, "STAY": 5}
+    action_vectors = {"UP": (-1, 0), "DOWN": (1, 0), "LEFT": (0, -1), "RIGHT": (0, 1),
+       "DIAG_UL": (-1, -1), "DIAG_UR": (-1, 1), "DIAG_DL": (1, -1), "DIAG_DR": (1, 1)}
     # opcodes according to communication protocol
     opcodes = {
         "DIRECTION_REQUEST": 1,
@@ -76,10 +87,16 @@ class Config:
     image_file = "./saved.jpg"
     # resolution of images
     camera_resolution = (2592, 1936)
+    # the zoom of the camera, dictates the portion of image to capture (from 0 to 1 is default)
+    # (x, y, width, height)
+    zoom = (0.22, 0.0, 0.7, 0.8)
+    # frame rate
+    frame_rate = 9
     # width of actual maze, allows for better perspective transformation
     maze_width = 1189
     # height of actual maze, allows for better perspective transformation
     maze_height = 849
+    line_width = 4
     # ID to use for the car, should not be an id used by any of the aruCos
     CAR_ID = 4
     # the aruCo ID used for the back of the car
@@ -87,5 +104,6 @@ class Config:
     # the aruCo ID used for the front of the car
     FORWARD_CAR_ID = 1
     # the aruCo ID used for the end
-    END_ID = 0
+    END_ID = 2
+
 

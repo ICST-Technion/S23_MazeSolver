@@ -27,21 +27,25 @@ async def handle_client(websocket, path):
 
         if message == "pic":
             print("reset")
-            im = cv2.imread("../Camera/problem_pics/test-3.jpg")
-            success, binary_data = cv2.imencode('.jpg', im)
-
-            base64_data = base64.b64encode(binary_data).decode('utf-8')
-
-            status = {"type": "maze", "maze": base64_data}
             await websocket.send(json.dumps(status))
 
         if message == "status":
             status = {"type": "status", "status": {
                 "connection": True,
+                "initial_maze_loaded": True,
                 "path_found": False,
                 "running": set_as,
                 "calculating_path": False,
+
             }}
+            await websocket.send(json.dumps(status))
+        if message == "maze":
+            im = cv2.imread("../test.png")
+            success, binary_data = cv2.imencode('.jpg', im)
+
+            base64_data = base64.b64encode(binary_data).decode('utf-8')
+
+            status = {"type": "maze", "maze": base64_data}
             await websocket.send(json.dumps(status))
 
 async def start_server():
