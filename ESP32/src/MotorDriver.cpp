@@ -41,9 +41,9 @@ void processCarMovement(MSG directionMSG)
     {
     case FINISH:
         Serial.println("FINISH");
-        ledsBlink(50, 10);
         directionMSG.direction = STOP;
         processCarMovement(directionMSG);
+        ledsBlink(50, 10);
         break;
     case FORWARD:
         Serial.println("FORWARD");
@@ -61,8 +61,8 @@ void processCarMovement(MSG directionMSG)
         delay(directionMSG.time_angle);
 
         // stop the car
-        directionMSG.direction = STOP;
-        processCarMovement(directionMSG);
+        // directionMSG.direction = STOP;
+        // processCarMovement(directionMSG);
         break;
     case BACKWARD:
         Serial.println("BACKWARD");
@@ -80,8 +80,8 @@ void processCarMovement(MSG directionMSG)
 
         delay(directionMSG.time_angle);
 
-        directionMSG.direction = STOP;
-        processCarMovement(directionMSG);
+        // directionMSG.direction = STOP;
+        // processCarMovement(directionMSG);
         break;
 
     case LEFT:
@@ -99,8 +99,8 @@ void processCarMovement(MSG directionMSG)
 
         delay(directionMSG.time_angle);
 
-        directionMSG.direction = STOP;
-        processCarMovement(directionMSG);
+        // directionMSG.direction = STOP;
+        // processCarMovement(directionMSG);
         break;
 
     case RIGHT:
@@ -118,8 +118,8 @@ void processCarMovement(MSG directionMSG)
 
         delay(directionMSG.time_angle);
 
-        directionMSG.direction = STOP;
-        processCarMovement(directionMSG);
+        // directionMSG.direction = STOP;
+        // processCarMovement(directionMSG);
         break;
 
     case STOP:

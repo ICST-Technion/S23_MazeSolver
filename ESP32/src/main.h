@@ -1,7 +1,6 @@
 #ifndef __MAIN_H
 #define __MAIN_H
 
-// line follwer pins
 
 #define LED1 (23)
 #define LED2 (13)
