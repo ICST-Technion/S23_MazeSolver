@@ -10,7 +10,8 @@ Features Include:​
 -  Finding shortest path in a dynamic maze using A-star.
 
 ## Table of Contents
-- [Installation](#installation)
+- [Install](#install)
+- [Usage](#usage)
 - [Camera](#camera)
 - [ESP32](#esp32)
 - [Image-processing](#image-processing)
@@ -21,7 +22,7 @@ Features Include:​
 - [Hardware individual tests](#hardware-individual-tests)
 - [Project Poster](#project-poster)
 
-## Installation
+## Install
 
 ## Usage
 
