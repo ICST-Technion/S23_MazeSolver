@@ -10,7 +10,7 @@ Features Include:​
 -  Finding shortest path in a dynamic maze using A-star.
 
 ## Table of Contents
-
+- [Installation](#installation)
 - [Camera](#camera)
 - [ESP32](#esp32)
 - [Image-processing](#image-processing)
@@ -20,6 +20,10 @@ Features Include:​
 - [Maze-controller-app](#maze-controller-app)
 - [Hardware individual tests](#hardware-individual-tests)
 - [Project Poster](#project-poster)
+
+## Installation
+
+## Usage
 
 ## Camera
 
