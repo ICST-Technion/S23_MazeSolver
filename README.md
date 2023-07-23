@@ -35,6 +35,9 @@ ESP 32:
    
 Car-Controller Application:
 1. Install the car_controller.apk file on your phone.
+The Car_controller_app.apk file is located at https://technionmail-my.sharepoint.com/:f:/g/personal/sahare_campus_technion_ac_il/EsTae1xXz85Gk2wWCjR2AEABrrJKdBbVlsBJRAkiCQjVaQ?e=S61ufo.
+(since it is bigger than 25MB).
+
 
 ## Usage
 1. Turn on the RPI. (After 1-2 minutes, there should be a WiFi access point.)
