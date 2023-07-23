@@ -23,8 +23,28 @@ Features Include:​
 - [Project Poster](#project-poster)
 
 ## Install
+install:
+Raspberry Pi:
+1. Load the Raspberry image file.
+2. After booting, please pip install all the requirements that are in the requirements.txt file.
+3. The RPI should create an access point (WiFi) when powered on. Please follow the AP instructions file.
+4. Clone the repository to your raspberry Desktop.
+
+ESP 32:
+1. Clone the ESP32 folder to your desktop and Load the elf file to the ESP's On-chip Flash.
+   
+Car-Controller Application:
+1. Install the car_controller.apk file on your phone.
 
 ## Usage
+1. Turn on the RPI. (After 1-2 minutes, there should be a WiFi access point.)
+2. In the RPI, redirect to the main.py file location and run "python main.py".
+3. Turn on the ESP32-Car.
+4. Open the application and connect to the RPI-WiFi by clicking on "connect".
+5. Put the Car and the end-aruco on the maze.
+6. In the application, click on "calculate path".
+7. In order to start, click on "start".
+
 
 ## Camera
 
